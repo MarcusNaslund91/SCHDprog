@@ -326,6 +326,8 @@ class Designer:
     1.	Define Vessel Properties and Operational Conditions
     2.	Define Materials
      Q:  Do you assign materials to each member type?
+     A: You define material objects for whatever kind of materials you are going to use. Afterwards, when you define a
+     structural member these objects should be atributes of the structural member object.
      
     3.	Define Profiles
      Q:  What part of the profiles do you define?
@@ -333,6 +335,7 @@ class Designer:
     4.	Define topology (stiffeners, girders and bulkheads position, 
     orientation using ASV nomenclature) and Areas (Side, Bottom, Superstructure, etc..)
      Q:  In what order do you define the topology?
+     A: In skype
      
     5.	Calculate Pressures
     6.	Calculate Minimum vs offered for plating and reinforcements
