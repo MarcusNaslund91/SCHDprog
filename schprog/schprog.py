@@ -631,29 +631,38 @@ class Report:
     using the user input. 
 """
 class Designer:
-    pass
-    # receive inputs
     
     def define_vessel(L_WL, B_C, m_LDC, Beta_04, H_T, T_C, V, op_class):
         VESSEL = Vessel(L_WL, B_C, m_LDC, Beta_04, H_T, T_C, V, op_class)
         return VESSEL
-    
+
+#    def create_topology(vessel, n_stiff):
+#        stiff_y_pos = linspace(0, width, s_stiff)
+#        panel_width = s_stiffener
+#        panel_y_pos = stiff_y_pos - s_stiff/2
+#
+#    
+#    def define_topology(stiff_y_pos, panel_y_pos, panel_width):
+#        VESSEL.STRUCTURE.define_topology(stiff_y_pos, panel_y_pos, panel_width)
+    #        for i in range(0, stiff_y_pos.__len__()):
+    #            self.stiff_obj[i] = self.Stiffener(stiff_y_pos[i], static_length, static_x)
+    #            self.Stiffener.__init__(STRUCTURE, y_pos, x_pos, length)
+#            
 #    def assign_material(self, material_obj):
 #        self.material_obj = material_obj
 #    
 #    def assign_profile(self, profile_obj):
 #        self.profile_obj = profile_obj
 #        
-#    def create_topology(vessel, n_stiff):
-#        stiff_y_pos = linspace(0, width, s_stiff)
-#        panel_width = s_stiffener
-#        panel_y_pos = stiff_y_pos - s_stiff/2
+#    def calc_scantling(Rule,Vessel):
+#        [list1]=Vessel.Structure.Panels[i].GetData(RuleType)
+#        [list1]=Vessel.Structure.Stiffener[i].GetData(RuleType)
+#        list1=[b,l,m_LDC]
 #        
-#    def define_topology(stiff_y_pos, panel_y_pos, panel_width):
-#        for i in range(0, stiff_y_pos.__len__()):
-#            self.stiff_obj[i] = self.Stiffener(stiff_y_pos[0], static_length, static_x)
-#            self.Stiffener.__init__(STRUCTURE, y_pos, x_pos, length)
-#            VESSEL.STRUCTURE.define_topology(stiff_y_pos, panel_y_pos, panel_width)
+#        [list2] = Rule.CalcPressureFactors(list1)
+#        list2=[ISO,k_AR_d,k_AR_p,A_D]
+#        
+
 
 """
 Design.CalScantling(Rule,Vessel)
@@ -669,7 +678,6 @@ Vessel.Structure.Panels[i].AssignScant(List2)
 if list2[0]==ISO:
     Dict=['ISO':List2]
     
-
 
 Design.AssignMaterial(Vessel,Material)
 def assign_material(self,obj_material)
@@ -696,7 +704,8 @@ Stiffener.__init__(STRUCTURE,y_pos, x_pos, length)
     self.length=length
     
 """
-
+    # receive inputs
+    
     # Methods:
         # Designer.CreateStructReport(Structure,ISO12215,Report)
 """
@@ -825,7 +834,6 @@ class Optimizer:
 #print("k_DC = ", global_ISO_var.k_DC)
 #
 #stiffener1.pressure_factors = global_ISO_var.calc_pressure_factors(ship_A, section1, stiffener1)
-##print(stiffener1.pressurefactors.k_L)
 
 Designer.define_vessel(6.851, 2.008, 4500, 30.0, 3.0, 0.875, 12.0, 'A')
-print(VESSEL)
+VESSEL.L_WL
