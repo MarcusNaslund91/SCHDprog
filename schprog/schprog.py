@@ -18,16 +18,18 @@ _logger = logging.getLogger(__name__)
 
 
 """ Defines ship meta data and operational conditions """
-class Ship:
+class Vessel:
     def __init__(self, L_WL, B_C, m_LDC, Beta_04, H_T, T_C, V, op_class):
         self.L_WL = L_WL
         self.B_C = B_C
         self.m_LDC = m_LDC
-        self.Beta_04 = Beta_04
+        self.Beta_04 = Beta_04 # range 10 - 30 degrees
         self.H_T = H_T
         self.T_C = T_C
         self.V = V
         self.op_class = op_class
+        # TODO: add variable check
+
 
 #   Calculate craft mode (planing = 1 or displacement = 2)
     def calc_craft_mode(self):
@@ -37,10 +39,6 @@ class Ship:
         else:
             craft_mode = 1
         return craft_mode
-        
-
-
-
 
 
     # User input (store):
@@ -373,26 +371,22 @@ class Rules:
 
 """ Calculates structural requirements according to ISO 12215 """
 class ISO12215(Rules):
-    def __init__(self, design_category):
-        self.design_category = design_category
+    def __init__(self, design_category, ship_object):
+        self.design_category = GlobalVariableCheck.check_inputs('init', design_category, ship_object)
+        
+    def calc_global_var(self, ship_object):
+        GlobalVariableCheck.check_inputs('calc_global_var', self.design_category, ship_object)
         
         """ Design catergory factor k_DC, section 7.2 """
-        if design_category == 'A':
+        if self.design_category == 'A':
             self.k_DC = 1
-        elif design_category == 'B':
+        elif self.design_category == 'B':
             self.k_DC = 0.8
-        elif design_category == 'C':
+        elif self.design_category == 'C':
             self.k_DC = 0.6
-        elif design_category == 'D':
+        elif self.design_category == 'D':
             self.k_DC = 0.4
         #print ("k_DC = ", k_DC)
-        
-    
-    """ PRESSURE ADJUSTING FACTORS, SECTION 7 """
-    def calc_pressure_factors(self, ship_object, structure_object, component_object):
-        GlobalVariableCheck.check_inputs_exists('pressure_factors', ship_object,
-                                                structure_object, component_object)
-        
         
         """ DYNAMIC LOAD FACTOR n_CG, SECTION 7.3 """
         n_CG1 = (0.32 * (ship_object.L_WL / (10*ship_object.B_C) + 0.084) # eq.1.
@@ -408,31 +402,32 @@ class ISO12215(Rules):
         if ship_object.craft_mode == 1:
             
             if n_CG1 <= 3.0:
-                n_CG = n_CG1
+                self.n_CG = n_CG1
             elif (3.0 > (n_CG1 and n_CG2) < 7):
-                n_CG = max(n_CG1, n_CG2)
+                self.n_CG = max(n_CG1, n_CG2)
             else:
-                n_CG = 7    
+                self.n_CG = 7    
             #print ("n_CG = ", n_CG)
             
             """ Dynamic load factor for displacement motor craft, section 7.3.2 """
         elif ship_object.craft_mode == 2:
             
             if n_CG1 <= 3:
-                n_CG = n_CG1
+                self.n_CG = n_CG1
             else:
-                print("Your vessel might be going to fast!")
-            
-            
-        
-        
+                print("Your vessel might be going too fast for a displacement craft!")
+  
+    
+    """ PRESSURE ADJUSTING FACTORS, SECTION 7 """
+    def calc_pressure_factors(self, ship_object, structure_object, component_object):
+
         """ LONGITUDINAL PRESSURE DISTRIBUTION FACTOR k_L, SECTION 7.4
             First the dynimic load factor has to be modified according to 
             section 7.4 
         """
-        if n_CG < 3:
+        if self.n_CG < 3:
             n_CG_kL = 3
-        elif n_CG > 6:
+        elif self.n_CG > 6:
             n_CG_kL = 6
         else:
             n_CG_kL = n_CG
@@ -450,6 +445,7 @@ class ISO12215(Rules):
                 pass 
         else:
             pass
+        
         #print ("x/L_WL = ", (x/L_WL))
         #print ("k_L = ", k_L)
         
@@ -558,20 +554,23 @@ class ISO12215(Rules):
             
             #k_P = (k_DC, n_CG, k_L, k_AR_panel, k_AR_stiff, k_Z)
             #print (k_P)
-            #return k_DC, n_CG, k_L, k_AR_panel_p, k_AR_stiff_p, k_AR_panel_d, k_AR_stiff_d, k_Z
+#        return (component_object.k_DC = k_DC, component_object.n_CG = n_CG, 
+#                component_object.k_L = k_L, component_object.k_AR_p = k_AR_p, 
+#                component_object.k_AR_d = k_AR_d, component_object.k_Z = k_Z
+#                )
     #    
 #    
 #    ##pressure_factors(ship_prop, craft_mode, design_loc, panel_dim, stiff_dim)
     
     # Input: 
         # Panel:
-            # Ship
+            # Vessel
             # MaterialsLibrary
             # Structure
             # Structure.Shell
             # Structure.Shell.Panel
         # Stiffener (minimum req):
-            # Ship
+            # Vessel
             # MaterialsLibrary
             # Structure
             # PlatingLibrary (panel thickness)
@@ -603,7 +602,7 @@ class Report:
     pass
     # Create graphs, messages, spreadsheets and all calculation outputs.
     # Input:
-        # Ship
+        # Vessel
         # MaterialsLibrary
         # Structure
         # Structure.Shell
@@ -635,6 +634,69 @@ class Designer:
     pass
     # receive inputs
     
+    def define_vessel(L_WL, B_C, m_LDC, Beta_04, H_T, T_C, V, op_class):
+        VESSEL = Vessel(L_WL, B_C, m_LDC, Beta_04, H_T, T_C, V, op_class)
+        return VESSEL
+    
+#    def assign_material(self, material_obj):
+#        self.material_obj = material_obj
+#    
+#    def assign_profile(self, profile_obj):
+#        self.profile_obj = profile_obj
+#        
+#    def create_topology(vessel, n_stiff):
+#        stiff_y_pos = linspace(0, width, s_stiff)
+#        panel_width = s_stiffener
+#        panel_y_pos = stiff_y_pos - s_stiff/2
+#        
+#    def define_topology(stiff_y_pos, panel_y_pos, panel_width):
+#        for i in range(0, stiff_y_pos.__len__()):
+#            self.stiff_obj[i] = self.Stiffener(stiff_y_pos[0], static_length, static_x)
+#            self.Stiffener.__init__(STRUCTURE, y_pos, x_pos, length)
+#            VESSEL.STRUCTURE.define_topology(stiff_y_pos, panel_y_pos, panel_width)
+
+"""
+Design.CalScantling(Rule,Vessel)
+[List1]=Structure.Panels[i].GetData(RuleType)
+[List1]=Vessel.Structure.Panels[0].GetData(RuleType)
+[List1]=Vessel.Structure.Stiffener[0].GetData(RuleType)
+list1=[b,l,m_LDC]
+
+[List2] = Rule.CalcPressureFactors(List1)
+List2=[ISO,k_AR_d,k_AR_p,A_D]
+
+Vessel.Structure.Panels[i].AssignScant(List2)
+if list2[0]==ISO:
+    Dict=['ISO':List2]
+    
+
+
+Design.AssignMaterial(Vessel,Material)
+def assign_material(self,obj_material)
+    self. obj_material=obj_material
+Vessel.Structure.Stiffener[0].AssignMaterial(obj_material)
+Vessel.Structuture.Stiffener[0].obj_material
+
+n_stiff = Vessel.Structure.Stiffeners.__len__()
+Structure.Stiffeners=[list of stiffeners objects]
+
+Design.CreateTopology(VESSEL,nstiff)
+ stiff_y_pos=linspace(0,width,s_stiffener)
+ panel_width=s_stiffener
+ Panel_y=stiff_y_pos-s_stiff/2
+
+VESSEL.STRUCTURE.DefineTopology(stiff_y_pos, panel_y_pos, panel_width)
+for i in range(0,stiff_y_pos.__len__()):
+    self.Stiff_obj[i] = self.Stiffener(stiff_y_pos[0], static_length, static_x)
+    self.Stiffener.__init__(STRUCTURE, y_pos, x_pos, length)
+
+Stiffener.__init__(STRUCTURE,y_pos, x_pos, length)
+    self.y_pos=y_pos
+    self.x_pos=x_pos
+    self.length=length
+    
+"""
+
     # Methods:
         # Designer.CreateStructReport(Structure,ISO12215,Report)
 """
@@ -688,8 +750,16 @@ class Designer:
 """
 class GlobalVariableCheck:
     
-    def check_inputs_exists(function, ship_object, structure_object, component_object):
-        if function == 'pressure_factors':
+    def check_inputs(function, design_category, ship_object, 
+                     structure_object=None, component_object=None):
+        if function == 'init':
+            while True:
+                    if design_category in ('A', 'B', 'C', 'D'):
+                        break
+                    else:
+                        design_category = input('Not a valid design category, choose A, B, C or D >>> ')
+                        return design_category
+        elif function == 'calc_global_var':
             if not hasattr(ship_object, 'craft_mode'):
                 print("Error: calculate or choose craft mode; planing or displacement")
                 while True:
@@ -705,9 +775,6 @@ class GlobalVariableCheck:
                     ship_object.craft_mode = int(craft_mode_)
                     #setattr(ship_object, 'craft_mode', int(craft_mode_))
             print("craft_mode = ", ship_object.craft_mode)
-        else:
-            pass
-        
     
     # Input:
         # All variables
@@ -731,24 +798,34 @@ class Optimizer:
     # Run optimization
 
 
-ship_A = Ship(6.851, 2.008, 4500, 30.0, 3.0, 0.875, 12.0, 'A')
-#ship_A.craft_mode = ship_A.calc_craft_mode()
+#ship_A = Vessel(6.851, 2.008, 4500, 30.0, 3.0, 0.875, 12.0, 'A')
+##ship_A.craft_mode = ship_A.calc_craft_mode()
+#
+#AL_5083_O = MaterialsLibrary('AL_5083_O', 125, 270, 7000, 2692, 2720)
+#AL_6082_T6 = MaterialsLibrary('AL_6082_T6', 115, 170, 7000, 2692, 2830)
+#print(AL_5083_O)
+#
+#Flat_Bar_62_x_6 = Extrusions('Flat Bar 62 x 6', 8.824, 3.720, 6.0, 'Flat Bar')
+#
+#section1 = Structure(643, 1120, 1)
+#section1.stiff_s = section1.stiffener_equal_spacing()
+#print("s_stiffener = ", section1.stiff_s)
+#
+#stiffener1 = Stiffener(0.325, 0, section1, 'longitudinal', 'bottom', 'A')
+#stiffener1.nomenclature = stiffener1.assign_nomenclature()
+#stiffener1.choose_material(stiffener1, AL_6082_T6)
+#stiffener1.choose_profile(stiffener1, Flat_Bar_62_x_6)
+#print("stiffener name = ", stiffener1.nomenclature)
+#print("stiffener material = ", stiffener1.material)
+#print("stiffener profile = ", stiffener1.profile_label)
+#
+#global_ISO_var = ISO12215('a', ship_A)
+#global_ISO_var.calc_global_var(ship_A)
+#print("design_category = ", global_ISO_var.design_category)
+#print("k_DC = ", global_ISO_var.k_DC)
+#
+#stiffener1.pressure_factors = global_ISO_var.calc_pressure_factors(ship_A, section1, stiffener1)
+##print(stiffener1.pressurefactors.k_L)
 
-AL_5083_O = MaterialsLibrary('AL_5083_O', 125, 270, 7000, 2692, 2720)
-AL_6082_T6 = MaterialsLibrary('AL_6082_T6', 115, 170, 7000, 2692, 2830)
-print(AL_5083_O)
-
-Flat_Bar_62_x_6 = Extrusions('Flat Bar 62 x 6', 8.824, 3.720, 6.0, 'Flat Bar')
-
-section1 = Structure(643, 1120, 1)
-section1.stiff_s = section1.stiffener_equal_spacing()
-print("s_stiffener = ", section1.stiff_s)
-
-stiffener1 = Stiffener(0.325, 0, section1, 'longitudinal', 'bottom', 'A')
-stiffener1.nomenclature = stiffener1.assign_nomenclature()
-stiffener1.choose_material(stiffener1, AL_6082_T6)
-stiffener1.choose_profile(stiffener1, Flat_Bar_62_x_6)
-print("stiffener_name = ", stiffener1.nomenclature)
-
-global_ISO_variables = ISO12215('A')
-stiffener1.pressure_factors = global_ISO_variables.calc_pressure_factors(ship_A, section1, stiffener1)
+Designer.define_vessel(6.851, 2.008, 4500, 30.0, 3.0, 0.875, 12.0, 'A')
+print(VESSEL)
