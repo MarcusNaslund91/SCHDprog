@@ -185,8 +185,10 @@ class Panel(Shell):
 
         pass
     
-    def assign_material(self, material_obj):
-        self.material = material_obj
+    def assign_material(self, obj_Material):
+        self.material = obj_Material
+        
+
         
     # Input: 
         # Structure.'Girder spacing, frame spacing, stiffener spacing.'
@@ -757,8 +759,11 @@ class Designer:
             print("Testing2")
             
             
-
-        
+    def assign_material_to_all_panels(self, obj_Struct, obj_Material):
+        for i in range(0,obj_Struct.Panel.__len__()):
+            obj_Struct.Panel[i].assign_material(obj_Material)
+        pass
+    
     def assign_profile(self, profile_obj):
         self.profile_obj = profile_obj
 
@@ -852,6 +857,13 @@ class Optimizer:
     # User chooses optimization method
     # User configures chosen method
     # Run optimization
+
+
+#section1 = Structure(643, 1120, 1)
+#section1.stiff_s = section1.stiffener_equal_spacing()
+#print("s_stiffener = ", section1.stiff_s)
+#
+#stiffener1 = Stiffener(0.325, 0, section1, 'longitudinal', 'bottom', 'A')
 
 
 
