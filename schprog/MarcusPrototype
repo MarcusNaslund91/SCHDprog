@@ -36,4 +36,9 @@ Vess.assign_structure(Struct)
 Des.calc_pressure_factors(ISO, Struct, Vess)
 Des.calc_design_pressures(ISO, Struct, Vess)
 
+ # if you wanna assign specific material to a panel
+#Struct.Panel[0].assign_material(AL_5083_O)
+# if you wanna assign the same material to all panels
+Des.assign_material_to_all_panels(Struct, AL_5083_O)
+
 print('Done')
