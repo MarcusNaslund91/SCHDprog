@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jun 14 08:30:14 2017
+
+@author: Marcus Naslund 
+"""
+
+import schprog as SP
+
+# initialize objects
+Des = SP.Designer()
+ISO = SP.ISO12215('A')
+Vess = SP.Vessel(6.851, 2.008, 4500, 30.0, 3.0, 0.875, 12.0)
+Struct = SP.Structure()
+
+AL_5083_O = SP.MaterialsLibrary('AL_5083_O', 125, 270, 7000, 2692, 2720)
+#AL_6082_T6 = SP.MaterialsLibrary('AL_6082_T6', 115, 170, 7000, 2692, 2830)
+#
+#Flat_Bar_62_x_6 = SP.Extrusions('Flat Bar 62 x 6', 8.824, 3.720, 6.0, 'Flat Bar')
+
+
+# create panels
+Pan1 = SP.Panel(100,300)
+Pan2 = SP.Panel(150,300)
+
+# assign panels to structure
+Struct.assign_panel(Pan1)
+Struct.assign_panel(Pan2)
+
+# assign structure to vessel
+Vess.assign_structure(Struct)
+
+
+# calculate pressure using ISO rules
+Des.calc_pressure_factors(ISO, Struct, Vess)
+Des.calc_design_pressures(ISO, Struct, Vess)
+
+print('Done')
