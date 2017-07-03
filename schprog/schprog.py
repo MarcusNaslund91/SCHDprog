@@ -8,7 +8,7 @@
 #import sys
 import logging
 import math
-#import numpy
+import numpy
 from bisect import bisect_left
 
 #from schprog import __version__
@@ -94,6 +94,18 @@ class Structure:
             Output:
                 self.mLDC: Loaded displacements mass of the vessel (float, kg)
                 self.Panel: Panel objects from Panel class.
+                
+            ...assign_panel...
+            Input: 
+                objPan: Panel object
+            Output:
+                self.objPan[i]
+                
+            ...assign_stiffener...
+            Input: 
+                objStiff: Stiffener object
+            Output:
+                self.objStiff[i]
             
             ...assign_global_var...
             Input:
@@ -107,11 +119,17 @@ class Structure:
         """ Inits the Structure object. """
         self.mLDC = 4500  # TODO: Figure out how to get value from superclass object
         self.Panel = []
+        self.Stiffener = []
         pass
 
     def assign_panel(self, objPan):
         """ Assign Panel object as attribute to self (Structure object). """
         self.Panel = self.Panel + [objPan]
+        pass
+    
+    def assign_stiffener(self, objStiff):
+        """ Assign Stiffener object as attribute to self (Structure object). """
+        self.Stiffener = self.Stiffener + [objStiff]
         pass
 
     def assign_global_var(self, inputVec):
@@ -149,16 +167,57 @@ class Stiffener(Structure):
         
         Attributes:
             ...__init__...
-            ???
-            
+            Input:
+                lStiff: Length of the stiffener (float, mm)
+                xPos: x-coordinate of the centre of the stiffener from the
+                        aft of the vessel. (float, m)
+                yPos: y-coordinate of the centre of the stiffener from the
+                        mid of the vessel. (float, mm)
+                zPos: z-coordinate of the midpoint fo the bottom flange of the 
+                        stiffener from the keel of the vessel. (float, m)
+                sStiff: Spacing/Distance between two stiffeners (float, mm)
+                location: Design location of the stiffener e.g. 'bottom' or 
+                          'side' (string)
+                stiffType: The type fo stiffener e.g. 'girder', 'longitudinal'
+                           and 'frame'. (string)
+            Output:
+                self.Input
+                         
             ...assign_nomenclature...
             ???
+            
+            ...assign_press_factors...
+            Input:
+                ruleType: The rules that have been used for calculations (string)
+                kL: Longitudinal pressure distribution factor (0-1, -)
+                kAR_d: Displacement area pressure reduction factor (0-1, -)
+                kAR_p: Planing area pressure reduction factor (0-1, -)
+                AD: Design area under consideration (float, m2)
+                kZ: Vertical pressure distribution factor (0-1, -)
+            Output: 
+                self.Input
+                
+            ...assign_design_pressure...
+            Input:
+                ruleType: The rules that have been used for calculations (string)
+                pMax: Design pressure (float, kN/m2)
+            Output:
+                self.ruleType
+                self.pMax
             
             ...assign_material...
             Input:
                 Material: Material object from MaterialsLibrary class.(object)
             Output:
                self.Material
+               
+            ...assign_scantling_req...
+            Input:
+                ruleType: The rules that have been used for calculations (string)
+                AwMin: Minimum allowed shear web area (float, m2)
+                SMMin: Minimum allowed section modulus (float, m3)
+            Output:
+                self.Input
                
             ...assign_profile...
             Input:
@@ -168,15 +227,15 @@ class Stiffener(Structure):
             
         Q: Calculates the actual stress?
     """
-    def __init__(self, x, z, section, stiffType, stiffPos, spansPanels):
+    def __init__(self, lStiff, xPos, yPos, zPos, sStiff, location, stiffType):
         """ Inits the stiffener objects. """
-        self.x = x
-        self.z = z
-        self.stiffType = stiffType
-        self.stiffPos = stiffPos
-        self.spansPanels = spansPanels
-        self.s = section.stiff_s
-        self.lStiff = section.sFrames
+        self.lStiff = lStiff
+        self.xPos = xPos
+        self.yPos = yPos
+        self.zPos = zPos
+        self.sStiff = sStiff
+        self.location = location
+        self.stiffType = stiffType # e.g. longitudinal, girder, frame.
         pass
 
     def assign_nomenclature(self):
@@ -192,10 +251,42 @@ class Stiffener(Structure):
         else:  # TODO: add further nomenclature
             pass
         return nomenclature
+    
+    def assign_press_factors(self, inputVec):
+        """ Assigns the pressure factor as attributes to self (Stiffener objects). """
+        self.ruleType = inputVec[0]
+        if self.ruleType == 'ISO':
+            # Assign ISO Values
+            self.kL = inputVec[1]
+            self.kAR_d = inputVec[2]
+            self.kAR_p = inputVec[3]
+            self.AD = inputVec[4]
+            self.kZ = inputVec[5]
+        pass
+    
+    def assign_design_pressure(self, inputVec):
+        """ Assign design pressure as attribute to self (Stiffener object). """
+        self.ruleType = inputVec[0]
+        if self.ruleType == 'ISO':
+            # Assign ISO Values
+            self.pMax = inputVec[1]
+        pass
 
     def assign_material(self, objMat):
         """ Assign a MaterialsLibrary object as attribute to self (stiffener object). """
         self.Material = objMat
+        pass
+
+    def assign_scantling_req(self, inputVec):
+        """ Assigns scantling requirements for stiffeners as attributes to self
+        (stiffener object). 
+        """
+        self.ruleType = inputVec[0]
+        if self.ruleType == 'ISO':
+            # Assign ISO Values
+            self.AwMin = inputVec[1]
+            self.SMMin = inputVec[2]
+
         pass
 
     def assign_profile(self, objProf):
@@ -308,6 +399,7 @@ class Panel(Shell):
         self.xPos = xPos
         self.yPos = yPos
         self.location = location
+        # TODO: add z-coordinate
         pass
 
     def assign_press_factors(self, inputVec):
@@ -613,6 +705,23 @@ class ISO12215(Rules):
                 AD: Design area under consideration (float, m2)
                 kZ: Vertical pressure distribution factor (0-1, -)
                 
+            ...measure_stiffener...
+            Input:
+                objStiff: Stiffener object from the stiffener class.
+            Output:
+                Stiffener data = [lStiff, xPos, yPos, zPos, sStiff, location, stiffType]
+                
+            ...calc_stiff_pressure_factors...
+            Input:
+                [lStiff, xPos, yPos, zPos, sStiff, location, stiffType, mLDC, nCG, LWL]
+            Output:
+                ruleType: type of rule that has been used, put to default as 'ISO' (string)
+                kL: Longitudinal pressure distribution factor (0-1, -)
+                kAR_d: Displacement area pressure reduction factor (0-1, -)
+                kAR_p: Planing area pressure reduction factor (0-1, -)
+                AD: Design area under consideration (float, m2)
+                kZ: Vertical pressure distribution factor (0-1, -)
+                
             ...getpressure_factors...
             Input:
                 objStruct: Structure object from the Structure class.
@@ -622,6 +731,13 @@ class ISO12215(Rules):
                 Pressure factors = [kDC, kL, kAR_d, kAR_p, kZ]
                 
             ...calc_panel_pressures...
+            Input:
+                [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC]
+            Output:
+                ruleType: type of rule that has been used, put to default as 'ISO' (string)
+                pMax: Maximum/Design pressure (float, kN/m2)
+                
+            ...calc_stiffener_pressures...
             Input:
                 [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC]
             Output:
@@ -651,6 +767,13 @@ class ISO12215(Rules):
                 tReq: Required thickness for metal plating (float, mm)
                 tMin: Single-skin plating minimum thickness for the hull (float, mm)
                 
+            ...calc_stiff_req...
+            Input:
+                [pMax, lStiff, sStiff, sigmaYW]
+            Output:
+                ruleType: The rules that have been used for calculations (string)
+                AwMin: Minimum allowed shear web area (float, m2)
+                SMMin: Minimum allowed section modulus (float, m3)
             
     """
     def __init__(self, designCategory):
@@ -753,10 +876,10 @@ class ISO12215(Rules):
         else:
             pass
 
-        """ AREA PRESSURE REDUCTION FACTOR k_AR, SECTION 7.5 """
-        """ k_R is the structural component and boat type factor """
-        kR_p = 1
-        kR_d = 1.5 - 3e-4 * b
+        """ AREA PRESSURE REDUCTION FACTOR kAR, SECTION 7.5 """
+        """ kR is the structural component and boat type factor """
+        kR_p = 1  # annotation "_p" stands for planing mode
+        kR_d = 1.5 - 3e-4 * b  # annotation "_d" stands for displacement mode
 
         """ AD is the design area in m2 """
         AD = (lPan * b) * 1e-6
@@ -769,7 +892,7 @@ class ISO12215(Rules):
         else:
             AD = AD
 
-            """ Calculate k_AR """
+            """ Calculate kAR """
         kAR_p = ((kR_p * 0.1 * mLDC ** 0.15) /
                   AD ** 0.3)
         kAR_d = ((kR_d * 0.1 * mLDC ** 0.15) /
@@ -804,58 +927,97 @@ class ISO12215(Rules):
         PressFact = ['ISO', kL, kAR_d, kAR_p, AD, kZ]
 
         return PressFact
+    
+    def measure_stiffener(self, objStiff):
+        """ Collects data from Stiffener objects to be used as input for the rules. """
+        lStiff  = objStiff.lStiff
+        xPos = objStiff.xPos
+        yPos = objStiff.yPos
+        zPos = objStiff.zPos
+        sStiff = objStiff.sStiff
+        location = objStiff.location
+        stiffType = objStiff.stiffType
+        return [lStiff, xPos, yPos, zPos, sStiff, location, stiffType]
 
-        # TODO add stiffener function for pressure factors.
-#        elif isinstance(objComp, Stiffener): 
-#            kR_p = 1
-#            kR_d = 1 - 2e-4 * objComp.lStiff
-#            
-#            """ AD is the design area in m2 """
-#            AD = (objComp.lStiff * objComp.s)*1e-6
-#            
-#            """ check maximum and minimum value and modify according to 
-#                section 7.5.1 
-#            """   
-#            if AD < 0.33e-6 * objComp.lStiff**2:
-#                AD = 0.33e-6 * objComp.lStiff**2
-#            else:
-#                AD = AD
-#                
-#            """ Calculate k_AR """
-#            kAR_p = ((kR_p * 0.1 * objVess.mLDC**0.15) / 
-#            AD**0.3)
-#            kAR_d = ((kR_d * 0.1 * objVess.mLDC**0.15) / 
-#            AD**0.3)
-#               
-#            """ check maximum and minimum value and modify according to 
-#                section 7.5.2-3
-#            """                
-#            if kAR_p > 1:
-#                kAR_p = 1
-#            elif kAR_p < 0.25:
-#                kAR_p = 0.25
-#            else:
-#                kAR_p = kAR_p
-#                
-#            if kAR_d > 1:
-#                kAR_d = 1
-#            elif kAR_d < 0.25:
-#                kAR_d = 0.25
-#            else:
-#                kAR_d = kAR_d
-#                  
-#            """ HULL SIDE PRESSURE REDUCTION FACTOR kZ, SECTION 7.6. """
-#            # Z is the height from the fully loaded waterline to the top of the deck
-#            # h is the height from the fully loaded waterline to the middle/centre 
-#            # of the plate/stiffener.
-#            #kZ = (Z - h) / Z
-#            kZ = 0.676
+    def calc_stiff_pressure_factors(self, inputVec): 
+        """ Calculates the PRESSURE ADJUSTING FACTORS from SECTION 7 """
+        [lStiff, xPos, yPos, zPos, sStiff, location, stiffType, mLDC, nCG, LWL] = inputVec
+        
+        """ LONGITUDINAL PRESSURE DISTRIBUTION FACTOR 'kL', SECTION 7.4
+            First the dynimic load factor has to be modified according to
+            section 7.4.
+        """
+        if nCG < 3:
+            nCG_kL = 3
+        elif nCG > 6:
+            nCG_kL = 6
+        else:
+            nCG_kL = nCG
+
+        """ Calculate kL, section 7.4 eq 3. """
+        if (xPos/LWL) > 0.6:
+            kL = 1
+        elif (xPos/LWL) <= 0.6:
+            kL = ((1 - 0.167 * nCG_kL) / 0.6 *
+                   (xPos/LWL) + 0.167 * nCG_kL
+                   )
+            if kL > 1:
+                kL = 1
+            else:
+                pass
+        else:
+            pass
+        
+        """ AREA PRESSURE REDUCTION FACTOR kAR, SECTION 7.5 """
+        """ kR is the structural component and boat type factor """
+        kR_p = 1
+        kR_d = 1 - 2e-4 * lStiff
+        
+        """ AD is the design area in m2 """
+        AD = (lStiff * sStiff)*1e-6
+        
+        """ check maximum and minimum value and modify according to 
+            section 7.5.1 
+        """   
+        if AD < 0.33e-6 * lStiff**2:
+            AD = 0.33e-6 * lStiff**2
+        else:
+            AD = AD
             
-            #k_P = (kDC, nCG, kL, kAR_panel, k_AR_stiff, kZ)
-#        return (objComp.kDC = kDC, objComp.nCG = nCG, 
-#                objComp.kL = kL, objComp.kAR_p = kAR_p, 
-#                objComp.kAR_d = kAR_d, objComp.kZ = kZ
-#                )
+        """ Calculate k_AR """
+        kAR_p = ((kR_p * 0.1 * mLDC**0.15) / 
+        AD**0.3)
+        kAR_d = ((kR_d * 0.1 * mLDC**0.15) / 
+        AD**0.3)
+           
+        """ check maximum and minimum value and modify according to 
+            section 7.5.2-3
+        """                
+        if kAR_p > 1:
+            kAR_p = 1
+        elif kAR_p < 0.25:
+            kAR_p = 0.25
+        else:
+            kAR_p = kAR_p
+            
+        if kAR_d > 1:
+            kAR_d = 1
+        elif kAR_d < 0.25:
+            kAR_d = 0.25
+        else:
+            kAR_d = kAR_d
+              
+        """ HULL SIDE PRESSURE REDUCTION FACTOR kZ, SECTION 7.6. """
+        # Z is the height from the fully loaded waterline to the top of the deck
+        # h is the height from the fully loaded waterline to the middle/centre 
+        # of the plate/stiffener.
+        #kZ = (Z - h) / Z
+        kZ = 1
+        # TODO: calc dynamically
+        
+        PressFact = ['ISO', kL, kAR_d, kAR_p, AD, kZ]
+        
+        return PressFact
 
     def getpressure_factors(self, objStruct, objComp):
         """ Collects the data for pressure factors from the structure and 
@@ -874,8 +1036,8 @@ class ISO12215(Rules):
         """ MOTOR CRAFT DESIGN PRESSURE, SECTION 8.1 """
         [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC] = inputVec
 
-        pBBase_d = 2.4*mLDC**0.33 + 20
-        pBBase_p = (0.1*mLDC/(LWL * bC)) * (1 + kDC**0.5 * nCG)
+        pBBase_d = 2.4*mLDC**0.33 + 20  # displacement mode
+        pBBase_p = (0.1*mLDC/(LWL * bC)) * (1 + kDC**0.5 * nCG)  # planing mode
 
         if location == 'bottom':
             """ BOTTOM DESIGN PRESSURE
@@ -911,7 +1073,7 @@ class ISO12215(Rules):
 
             """         Maximum pressure """
             pMax = max(p_d, p_p, pMin)
-# TODO: add bulkhead
+#        TODO: add bulkhead
 #        elif location == 'bulkhead': 
 #            """ (ignore for now) WATERTIGHT BULKHEADS DESIGN PRESSURE, SECTION 8.3.1 """
 #            
@@ -923,67 +1085,62 @@ class ISO12215(Rules):
 
         return DesPress
 
-# TODO: Calculate designer pressure for stiffeners
 
-#            """" DESIGN PRESSURES, SECTION 8. """
-#    """ MOTOR CRAFT DESIGN PRESSURE, SECTION 8.1 """
-#    def calc_stiffener_pressures(self, inputVec):
-#        
-#        [LWL, bC, mLDC] = Ship_data
-#        [kDC, kL, kAR_d, kAR_p, kZ] = PressureFactors
-#        [location] = StiffData
+    def calc_stiffener_pressures(self, inputVec):
+        """" DESIGN PRESSURES, SECTION 8. """
+        
+        """ MOTOR CRAFT DESIGN PRESSURE, SECTION 8.1 """
+        [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC] = inputVec
 
-#        """ BOTTOM DESIGN PRESSURE
-#            The bottom pressure shall be the greater or 8.1.2 or 8.1.3. 
-#        """
-#        pBBase_d = 2.4*mLDC**0.33 + 20  # kN/m2
-#        pBBase_p = (0.1*mLDC/(LWL * bC)) * (1 + kDC**0.5 * nCG)  # kN/m2
-#        pBMin = 0.45*mLDC**0.33 + (0.9*LWL * kDC)  # kN/m2
-#        
-#        """ ---- Stiffener ----- """
-#        """         Displacement mode, section 8.1.2. """
-#        pB_d = pBBase_d * kAR_d * kDC * kL  # kN/m2
-#        
-#        
-#        """         Planing mode, section 8.1.3. """
-#        pB_p = pBBase_p * kAR_p * kL  # kN/m2
-#        
-#        """         Maximum pressure """
-#        pBMax = max(pB_d, pB_p, pBMin)  # kN/m2
-#        
-#        
-#        """ SIDE DESIGN PRESSURE
-#            The side pressure shall be the greater or 8.1.4 or 8.1.5. 
-#        """
-#        pMin = 0.9*LWL * kDC  # kN/m2
-#        pDBase = 0.35*LWL + 14.6  # kN/m2
-#        print ("pDBase = ", pDBase)
-#        
-#        """ ----- Stiffner ----- """
-#        """         Displacement mode, section 8.1.4. """
-#        pS_d = (pDBase + kZ * (pBBase_d - pDBase)) * kAR_d * kDC * kL
-#        
-#        """         Planing mode, section 8.1.5. """
-#        pS_p = (pDBase + kZ * (0.25*pBBase_p - pDBase)) * kAR_p * kDC * kL
-#        
-#        """         Maximum pressure """
-#        pSMax = max(pS_d, pS_p, pMin) # kN/m2
+        pBBase_d = 2.4*mLDC**0.33 + 20  # kN/m2
+        pBBase_p = (0.1*mLDC/(LWL * bC)) * (1 + kDC**0.5 * nCG)  # kN/m2
+        
+        if location == 'bottom':
+            """ BOTTOM DESIGN PRESSURE
+                The bottom pressure shall be the greater or 8.1.2 or 8.1.3. 
+            """
+            pBMin = 0.45*mLDC**0.33 + (0.9*LWL * kDC)  # kN/m2
+            
+            """         Displacement mode, section 8.1.2. """
+            pB_d = pBBase_d * kAR_d * kDC * kL  # kN/m2
+            
+            """         Planing mode, section 8.1.3. """
+            pB_p = pBBase_p * kAR_p * kL  # kN/m2
+            
+            """         Maximum pressure """
+            pMax = max(pB_d, pB_p, pBMin)  # kN/m2
+            
+        elif location == 'side':
+            """ SIDE DESIGN PRESSURE
+                The side pressure shall be the greater or 8.1.4 or 8.1.5. 
+            """
+            pSMin = 0.9*LWL * kDC  # kN/m2
+            pDBase = 0.35*LWL + 14.6  # kN/m2
+            
+            """         Displacement mode, section 8.1.4. """
+            pS_d = (pDBase + kZ * (pBBase_d - pDBase)) * kAR_d * kDC * kL
+            
+            """         Planing mode, section 8.1.5. """
+            pS_p = (pDBase + kZ * (0.25*pBBase_p - pDBase)) * kAR_p * kDC * kL
+            
+            """         Maximum pressure """
+            pMax = max(pS_d, pS_p, pSMin) # kN/m2
+        # TODO: add bulkhead
+#        elif location == 'bulkhead':
+#            """ (ignore for now) WATERTIGHT BULKHEADS DESIGN PRESSURE, SECTION 8.3.1 """
+#    
+#            """ ----- Vertical stiffener ----- """
+#            h_stiff_vert = lStiff  # m, This might be wrong.
+#            h_b_stiff_vert = (2/3) * h_stiff_vert  # m
+#            P_WB_stiff_vert = 7 * h_b_stiff_vert   # kN/m2
+#            
+#            
+#            """ ----- Horizontal stiffener ----- """
+#            h_b_stiff_hori = z  # m, This will have to be changed later. 
+#            P_WB_stiff_hori = 7 * h_b_stiff_hori   # kN/m2
 
-#        
-#        """ (ignore for now) WATERTIGHT BULKHEADS DESIGN PRESSURE, SECTION 8.3.1 """
-
-#        """ ----- Vertical stiffener ----- """
-#        h_stiff_vert = lStiff  # m, This might be wrong.
-#        h_b_stiff_vert = (2/3) * h_stiff_vert  # m
-#        P_WB_stiff_vert = 7 * h_b_stiff_vert   # kN/m2
-#        
-#        
-#        """ ----- Horizontal stiffener ----- """
-#        h_b_stiff_hori = z  # m, This will have to be changed later. 
-#        P_WB_stiff_hori = 7 * h_b_stiff_hori   # kN/m2
-#        
-#        return (pMax, P_BP_panel, pSMax, P_SM_panel, 
-#                P_WB_panel,P_WB_stiff_vert, P_WB_stiff_hori)
+        DesPress = ['ISO', pMax]
+        return DesPress
 
     def get_design_pressures(self, objComp):
         """ Collects the design pressure for a Panel/Stiffener to be used as
@@ -997,7 +1154,6 @@ class ISO12215(Rules):
         [pMax, b, lPan, location, mLDC, V, sigmaUW, sigmaY, sigmaYW] = inputVec
 
         """ Panel aspect ratio factor, section 10.1.2. """
-
         """ ----- for strength k2 ----- """
         if (lPan/b) < 2:
             k2 = ((0.271*(lPan/b)**2 + 0.910*(lPan/b) - 0.554) /
@@ -1038,6 +1194,12 @@ class ISO12215(Rules):
         else:
             m = (2-4/0.463-0.500)
             kSHC = 0.463 + m*((lPan/b) - 2)
+            
+        """ ---- Shear force ---- """
+        FShear = (math.sqrt(kC) * kSHC * pMax * b)*1e-3
+
+        """ ---- Bending moment ---- """
+        MBend = (83.33 * kC**2 * 2*k2 * pMax * b**2)*1e-6
 
         """ Design stress for metal plating, section 10.3.1. """
         sigmaD = min(0.6*sigmaUW, 0.9*sigmaYW)
@@ -1051,44 +1213,107 @@ class ISO12215(Rules):
         k7S = 0
         k8 = 0.1
 
+        """ Required thickness for metal plating, section 10.3.2. """
+        tReq = b * kC * math.sqrt((pMax*k2) / (1000*sigmaD))
+        
         if location == 'bottom':
-            """ ---- Shear force ---- """
-            FShear = (math.sqrt(kC) * kSHC * pMax * b)*1e-3
-
-            """ ---- Bending moment ---- """
-            MBend = (83.33 * kC**2 * 2*k2 * pMax * b**2)*1e-6
-
-            """ Required thikcness for metal plating, section 10.3.2. """
-            tReq = b * kC * math.sqrt((pMax*k2) / (1000*sigmaD))
-
             """ Minimum thickness for the hull, section 10.6.2. """
             tMin = k5 * (A + k7B * V + k8 * mLDC**0.33)
 
-        if location == 'side':
-            """ ---- Shear force ---- """
-            FShear = (math.sqrt(kC) * kSHC * pMax * b)*1e-3
-
-            """ ---- Bending moment ---- """
-            MBend = (83.33 * kC**2 * 2*k2 * pMax * b**2)*1e-6
-
-            """ Required thikcness for metal plating, section 10.3.2. """
-            tReq = b * kC * math.sqrt((pMax*k2) / (1000*sigmaD))
-
+        elif location == 'side':
             """ Minimum thickness for the hull, section 10.6.2. """
             tMin = k5 * (A + k7S * V + k8 * mLDC**0.33)
 
-        if location == 'bulkhead':
-            """ ---- Shear force ---- """
-            FShear = (math.sqrt(kC) * kSHC * pMax * b)*1e-3
-
-            """ ---- Bending moment ---- """
-            MBend = (83.33 * kC**2 * 2*k2 * pMax * b**2)*1e-6
-
-            """ Required thikcness for metal plating, section 10.3.2. """
-            tReq = b * kC * math.sqrt((pMax*k2) / (1000*sigmaD))
-
         PanReq = ['ISO', k2, k3, FShear, MBend, tReq, tMin]
         return PanReq
+    
+
+    #  rewrite some of these into constraints later
+    def calc_stiff_req(self, inputVec):
+        """ STIFFENING MEMBERS REQUIREMENTS, SECTION 11. """
+        [pMax, lStiff, sStiff, sigmaYW] = inputVec
+
+        
+        """ ADJUSTMENT FACTORS, SECITON 11.2 """
+        """ Curvature factor kCS, section 11.2.1. """
+        kCS = 1 # TODO: This is for non-curavture, add rules later!
+        
+        """ Stiffener shear area factor """
+        
+        kSA = 5 # This is for attached to plating
+        #kSA = 7.5 # # TODO: This is for other arrangements e.g. floating.
+        
+        """ Design stresses, section 11.3. """
+        sigmaDStiff = 0.7*sigmaYW
+        tauDStiff = 0.4*sigmaYW
+    
+        #""" minimum shear strength ???, section 11.3. """
+        #tau_min_stiff = 0.58*sigma_yw_stiff  # not sure if I use this or not?
+        
+        """ Minimum section modulus and shear/web area, section 11.4.1. """
+        AwMin = (kSA * pMax * sStiff * lStiff / tauDStiff)*1e-6  # cm2
+        SMMin = (83.33 * kCS * pMax * sStiff * lStiff**2 / sigmaDStiff)*1e-9  # cm3
+        
+        StiffReq = ['ISO', AwMin, SMMin]
+        return StiffReq
+
+#        """ Effective plating b_e, section 11.6. """
+#        be = 60*tp
+#        
+#        if be > sStiff:
+#            be = sStiff
+#        else:
+#            be = be
+            
+        # TODO: calculate actual stress fo stiffener
+        # TODO: maximum proportions for stiffeners
+#        """ Maximum proportions between dimensions within a stiffener, 
+#            section 11.7.2 
+#        """
+#        k_AS_B = A_W_B / A_W_min_B 
+#        #k_AS_S = A_W_S / A_W_min_S 
+#        #k_AS_WB = A_W_WB / A_W_min_WB 
+#        
+#        if sigma_act_stiff > 0.8*sigmaDStiff:
+#            if prof_type == 'Flat bar':
+#                if (h/t_w) > 12:
+#                    print ("Error: The stiffener proportion are bad, h/t_w > 12.")
+#                else:
+#                    pass
+#            elif prof_type == 'T-shaped' or 'L-shaped':
+#                if (h/t_w) > 40:
+#                    print ("Error: The stiffener proportions are bad, h/t_w > 40.")
+#                elif (d/t_f) > 12:
+#                    print ("Error: The stiffener proportions are bad, d/t_f > 12.")
+#                else:
+#                    pass
+#            else:
+#                print ("Error: Stiffener profile type is not chosen e.g. T-shaped")
+#                
+#        elif sigma_act_stiff < 0.8*sigmaDStiff:
+#            if prof_type == 'Flat bar':
+#                if (h/t_w) > 12:
+#                    print ("Error: The stiffener proportions are bad, h/t_w > 12.")
+#                else:
+#                    pass
+#            elif prof_type == 'T-shaped' or 'L-shaped':
+#                if (h/t_w) > 40 * k_AS_B:
+#                    print ("Error: The stiffener proportions are bad, h/t_w > 40 * k_AS_B.")
+#                elif (h/t_w) > 40 * k_AS_S:
+#                    print ("Error: The stiffener proportions are bad, h/t_w > 40 * k_AS_S.")
+#                elif (h/t_w) > 40 * k_AS_WB:
+#                    print ("Error: The stiffener proportions are bad, h/t_w > 40 * k_AS_WB.")
+#                elif (d/t_f) > 12:
+#                    print ("Error: The stiffener proportions are bad, d/t_f > 12.")
+#                else:
+#                    pass
+#            else:
+#                print ("Error: Stiffener profile type is not chosen e.g. T-shaped")
+#        else:
+#            pass
+        
+        
+
 
     # Methods:
         # List of elements (panel and stiffener)
@@ -1148,14 +1373,48 @@ class Designer:
                 -
             Output:
                 self
-            
+                
+            ...create_section...
+            Input:
+                sGird: Spacing/Distance between two girders (float, mm)
+                sFram: Spacing/Distance between two frames (float, mm)
+                xPos: Longitudinal position of the section(stiffened panel) (float, m)
+            Output:
+                self.Input
+                
+            ...create_section_topology...
+            Input:
+                nStiff: Number of stiffeners on one section (int, -)
+                location: location of the section e.g 'bottom' & 'side' (string)
+            Output:
+                self.panWidth: Panel width(b) (float, mm)
+                self.panYPos: y-coordinate for a panel with respect to the 
+                               sections girder spacing from zero. (float, mm)
+                self.panZPos: z-coordinate for a panel with respect to the keel (float, mm)
+                self.location: Location of the panels stiffeners e.g. 'bottom'
+                                and 'side' (string)
+                self.stiffYPos: y-coordinate for a stiffener with respect to the 
+                                 sections girder spacing from zero. (float, mm)
+                self.stiffZPos: z-coordinate for a stiffener with respect to the keel (float, mm)
+                self.sStiff: Spacing/Distance between two stiffeners (float, mm)
+                
+            ...define_section_topology...
+            Input:
+                objStruct
+            Output:
+                objPan: Panel object
+                objStruct.Panel[i]: Panel objects assigned to structure object
+                objStiff: Stiffener object
+                objStruct.Stiffener[i]: Stiffener objects assigned to structure object
+                
             ...calc_pressure_factors...
             Input:
-                objRule: Rules chil object. The rules that will be used for requirements.
+                objRule: Rules child object. The rules that will be used for requirements.
                 objStruct: Structure object from the Structure class.
                 objVess: Vessel object from the Vessel class.
             Output:
                 objStruct.Panel[i].'pressure factors'
+                objStruct.Stiffener[i].'pressure factors'
                 [ruleType, kDC, kL, kAR_d, kAR_p, kZ]
             
             ...calc_design_pressures...
@@ -1163,6 +1422,7 @@ class Designer:
                 [objRule, objStruct, objVess]
             Output:
                 objStruct.Panel[i].pMax: Maximum/Design pressure (float, kN/m2)
+                objStruct.Stiffener[i].pMax: Maximum/Design pressure (float, kN/m2)
                 [ruleType, pMax]
                 
             ...calc_scantling_req...
@@ -1171,6 +1431,8 @@ class Designer:
             Output:
                 objStruct.Panel[i].'scantling requirements'
                 [ruleType, k2, k3, FShear, MBend, tReq, tMin]
+                objStruct.Stiffener[i].'scantling requirements'
+                [ruleType, AwMin, SMMin]
                 
             ...assign_material_to_all_panels...
             Input:
@@ -1178,6 +1440,14 @@ class Designer:
                 objMat: Material object from the MaterialsLibrary class
             Output:
                 objStruct.Panel[i].Material
+                See more information in the MaterialsLibary class.
+                
+            ...assign_material_to_all_stiffeners...
+            Input:
+                objStruct
+                objMat: Material object from the MaterialsLibrary class
+            Output:
+                objStruct.Stiffener[i].Material
                 See more information in the MaterialsLibary class.
                 
             ...assign_recommended_plates...
@@ -1191,6 +1461,52 @@ class Designer:
     def __init__(self):
         """ Inits the Designer objects. """
         pass
+    
+    def create_section(self, sGird, sFram, xPos):
+        """ Create a section between two frames and two girder, consisting of
+            panels and stiffeners.
+        """
+        self.sGird = sGird
+        self.sFram = sFram
+        self.xPos = xPos
+        pass
+
+    def create_section_topology(self, nStiff, location):
+        """ Create the topology for a section using the number of stiffeners
+            and location of the section.
+        """
+        self.panWidth = []
+        self.panYPos = []
+        self.panZPos = []
+        self.location = location
+        """ Create equally spaced stiffener coordinates. """
+        if location == 'bottom':
+            self.stiffYPos = numpy.linspace(0, self.sGird, nStiff+2)
+            for i in range(0, nStiff+1):
+                self.stiffZPos = 0
+                self.sStiff = self.stiffYPos[i+1] - self.stiffYPos[i]
+                self.panZPos = 0
+                self.panWidth = self.panWidth + [self.stiffYPos[i+1] - self.stiffYPos[i]]
+                self.panYPos = self.panYPos + [self.stiffYPos[i+1] - self.panWidth[i]/2]
+        elif location == 'side':
+            # TODO: side
+            pass
+
+        pass
+
+    def define_section_topology(self, objStruct):
+        """ Create stiffener and panel objects using the section topology. """
+        for i in range(0, self.panYPos.__len__()):
+            Pan = (Panel(self.panWidth[i], self.sFram, 
+                         self.xPos, self.panYPos[i], self.location)
+                   )
+            objStruct.assign_panel(Pan)
+        for i in range(0, self.stiffYPos.__len__()-2):
+            Stiff = (Stiffener(self.sFram, self.xPos, self.stiffYPos[i+1], self.stiffZPos,
+                               self.sStiff, self.location, 'longitudinal')
+                     )
+            objStruct.assign_stiffener(Stiff)
+        pass
 
     def calc_pressure_factors(self, objRule, objStruct, objVess):
         """ Loops through all structural members and calculates the pressure
@@ -1203,7 +1519,7 @@ class Designer:
         objStruct.assign_global_var(GlobVar)
 
         for i in range(0, objStruct.Panel.__len__()):
-
+            """ Panel pressure factors """
             PanData = objRule.measure_panel(objStruct.Panel[i])
 
             InData = PanData + [objStruct.mLDC] + [objStruct.nCG] + [VessData[0]]
@@ -1212,10 +1528,21 @@ class Designer:
             PressFac = objRule.calc_panel_pressure_factors(InData)
 
             objStruct.Panel[i].assign_press_factors(PressFac)
-            print("Testing1")
-        # TODO: Stiffener
-        #for i in range(0,objStruct.Stiff.__len__())
+            print("Testing1P")
+
+        for i in range(0,objStruct.Stiffener.__len__()):
+            """ Stiffener pressure factors """
+            StiffData = objRule.measure_stiffener(objStruct.Stiffener[i])
+            
+            InData = StiffData + [objStruct.mLDC] + [objStruct.nCG] + [VessData[0]]
+            
+            PressFac = objRule.calc_stiff_pressure_factors(InData)
+            
+            objStruct.Stiffener[i].assign_press_factors(PressFac)
+            print("Testing1S")
         pass
+
+
 
     def calc_design_pressures(self, objRule, objStruct, objVess):
         """ Loops through all structural members and calculates the design 
@@ -1224,7 +1551,7 @@ class Designer:
         VessData = objRule.get_vessel_data(objVess)
 
         for i in range(0, objStruct.Panel.__len__()):
-
+            """ Panel design pressures """
             PressFact = objRule.getpressure_factors(objStruct, objStruct.Panel[i])
 
             PanData = objRule.measure_panel(objStruct.Panel[i])
@@ -1235,8 +1562,21 @@ class Designer:
             DesPress = objRule.calc_panel_pressures(InData)
 
             objStruct.Panel[i].assign_design_pressure(DesPress)
-            print("Testing2")
-        # TODO: stiffener
+            print("Testing2P")
+            
+        for i in range(0, objStruct.Stiffener.__len__()):
+            """ Stiffener design pressures """
+            PressFact = objRule.getpressure_factors(objStruct, objStruct.Stiffener[i])
+
+            StiffData = objRule.measure_stiffener(objStruct.Stiffener[i])
+
+            InData = PressFact + [StiffData[5]] + [objStruct.nCG] + VessData[:3]
+            # TODO: there might be a more stable way to do this.
+
+            DesPress = objRule.calc_stiffener_pressures(InData)
+
+            objStruct.Stiffener[i].assign_design_pressure(DesPress)
+            print("Testing2S")
         pass
 
     def calc_scantling_req(self, objRule, objStruct, objVess):
@@ -1246,7 +1586,7 @@ class Designer:
         VessData = objRule.get_vessel_data(objVess)
 
         for i in range(0, objStruct.Panel.__len__()):
-
+            """ Panel requirements """
             DesPress = objRule.get_design_pressures(objStruct.Panel[i])
 
             PanData = objRule.measure_panel(objStruct.Panel[i])
@@ -1261,13 +1601,35 @@ class Designer:
             PanReq = objRule.calc_panel_req(InData)
 
             objStruct.Panel[i].assign_scantling_req(PanReq)
-            print("Testing3")
-        # TODO: stiffener
+            print("Testing3P")
+            
+        for i in range(0, objStruct.Stiffener.__len__()):
+            """ Stiffener requirements """
+            DesPress = objRule.get_design_pressures(objStruct.Stiffener[i])
+
+            StiffData = objRule.measure_stiffener(objStruct.Stiffener[i])
+
+            InData = (DesPress + [StiffData[0]] + [StiffData[4]] +
+                      [objStruct.Stiffener[i].Material.yieldStrength]
+                      )  # TODO: there might be a more stable way to do this.
+
+            StiffReq = objRule.calc_stiff_req(InData)
+
+            objStruct.Stiffener[i].assign_scantling_req(StiffReq)
+            print("Testing3S")
+        pass
+
 
     def assign_material_to_all_panels(self, objStruct, objMat):
         """ Assigns the same material object to all panels. """
         for i in range(0, objStruct.Panel.__len__()):
             objStruct.Panel[i].assign_material(objMat)
+        pass
+    
+    def assign_material_to_all_stiffeners(self, objStruct, objMat):
+        """ Assigns the same material object to all stiffeners. """
+        for i in range(0, objStruct.Stiffener.__len__()):
+            objStruct.Stiffener[i].assign_material(objMat)
         pass
 
     def assign_recommended_plates(self, objStruct, objPlaLib):
@@ -1296,24 +1658,11 @@ class Designer:
         pass
 
     def assign_profile(self, objProf):
-        """ Assigns a Stiffener object a Profile object. """
+        """ Assigns a Profile object to a Stiffener object. """
         self.objProf = objProf
         pass
 
-#    def create_topology(self, s_girder, n_stiff):
-#        self.stiff_yPos = numpy.linspace(0, s_girder, n_stiff+2)
-#        self.panel_width = self.stiff_yPos[n_stiff]
-#        self.panel_yPos = self.stiff_yPos[1:2+n_stiff] - self.panel_width/2
-#        #return stiff_yPos, panel_width, panel_yPos
-#
-#    def define_topology(self, objStruct):
-##        sFrames=643
-##        xPos=0.325
-##        location='bottom'
-#        for i in range(0, self.panel_yPos.__len__()):
-#            objStruct.Panel[i] = objStruct.Panel(self.panel_width, 643, 0.325, self.panel_yPos[i], 'bottom')
-#                
-        #self.stiff_obj[i] = self.Stiffener(stiff_yPos[i], static_length, static_x)
+
 
 #    def initialize_rule(self,type):
 #        import schprog as SP
@@ -1333,10 +1682,10 @@ class Designer:
             after which will call a method inside the Report object to generate 
             the output data in the chosen format (ie: excel spreadsheet).
 """
-        # Change/up_date topology
-        # Change/up_date profiles
-        # Change/up_date material
-        # Change/up_date optimization
+        # Change/update topology
+        # Change/update profiles
+        # Change/update material
+        # Change/update optimization
     
     # Output:
         # Outputs from other classses, highlighting the changes if there are any.
@@ -1373,6 +1722,7 @@ class GlobalVariableCheck:
                 else:
                     objVess.craftMode = int(craftMode_)
             print("craftMode = ", objVess.craftMode)
+        pass
 
 
 class Optimizer:
