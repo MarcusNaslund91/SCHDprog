@@ -10,6 +10,8 @@ import logging
 import math
 import numpy
 from bisect import bisect_left
+import xlsxwriter
+from collections import Counter
 
 #from schprog import __version__
 
@@ -238,20 +240,28 @@ class Stiffener(Structure):
         self.stiffType = stiffType # e.g. longitudinal, girder, frame.
         pass
 
-    def assign_nomenclature(self):
-        """ Assigns nomenclature to the stiffener according to its cofiguration. """
+    def assign_nomenclature(self, sLoc, stiff_id): # TODO change this method later.
+        """ Assigns nomenclature to the stiffener according to its configuration. """
         if self.stiffType == 'longitudinal':
-            nomenclature_1 = 'L'
-            nomenclature_2 = input('stiffener location around vessel: ')
-            nomenclature = '%s%s %s' % (nomenclature_1, nomenclature_2, self.spansPanels)
+            nomenclature1 = 'L'
+            #nomenclature_2 = input('stiffener location around vessel: ')
+            #nomenclature_3 = input('stiffener panel span: ')
+            #nomenclature = '%s%s %s' % (nomenclature_1, nomenclature_2, nomenclature_3)
+            
+            nomenclature2 = sLoc
+            nomenclature3 = stiff_id
+            nomenclature = '%s%d %s' % (nomenclature1, nomenclature2, nomenclature3)
         elif self.stiffType == 'frame':
             nomenclature_1 = 'Fr'
             nomenclature_2 = input("frame number: ")
-            nomenclature = '%s%s %s' % (nomenclature_1, nomenclature_2, self.spansPanels)
+            nomenclature_3 = input('stiffener panel span: ')
+            nomenclature = '%s%s %s' % (nomenclature_1, nomenclature_2, nomenclature_3)
         else:  # TODO: add further nomenclature
             pass
-        return nomenclature
-    
+        self.stiffName = nomenclature
+        pass
+        
+        
     def assign_press_factors(self, inputVec):
         """ Assigns the pressure factor as attributes to self (Stiffener objects). """
         self.ruleType = inputVec[0]
@@ -294,6 +304,12 @@ class Stiffener(Structure):
         self.Profile = objProf
         pass
 
+    def calc_weight(self):
+        """ calculates total weight of the stiffener """
+        self.weight = (self.Profile.Atot*1e-6 * self.lStiff*1e-3
+                       * self.Material.density
+                       )
+        pass
 
     # Input:
         # Longitudinal location of member (d)
@@ -399,7 +415,17 @@ class Panel(Shell):
         self.xPos = xPos
         self.yPos = yPos
         self.location = location
+        self.area = (self.b * self.lPan)*1e-6 #m2
         # TODO: add z-coordinate
+        pass
+    
+    def assign_nomenclature(self, longi_loc, stiff_id): # TODO change this method later.
+        """ Assigns nomenclature to the stiffener according to its cofiguration. """
+        nomenclature1 = longi_loc
+        nomenclature2 = stiff_id
+        nomenclature = '%s%s' % (nomenclature1, nomenclature2)
+
+        self.panName = nomenclature
         pass
 
     def assign_press_factors(self, inputVec):
@@ -445,6 +471,12 @@ class Panel(Shell):
         self.Plate = objPlate
         pass
 
+    def calc_weight(self):
+        """ calculates total weight of the panel """
+        self.weight = (self.area * self.Plate.tp*1e-3
+                       * self.Material.density
+                       )
+        pass
         # Define nomenclature:
             # Longtitudinal position: A-Z from aft
             # Transverse position: 1 - n from bottom
@@ -578,12 +610,25 @@ class ProfileLibrary:
         and frames. User can choose between a set of available extrusions
         or define their own for machining.
     """
-    def __init__(self, stiffNom, chosenProfLabel):
+    def __init__(self):
         """ Inits the ProfileLibrary object. """
-        self.stiffNom = stiffNom
-        self.chosenProfLabel = chosenProfLabel
+        self.Extrusions = []
+        self.Machined = []
         pass
-
+    
+    def assign_extrusion(self, objProf):
+        """ Assigns plating objects as attributes to self (PlatingLibrary object)
+            from the Plates class. 
+        """
+        self.Extrusions = self.Extrusions + [objProf]
+        pass
+    
+    def assign_machined(self, objProf):
+        """ Assigns plating objects as attributes to self (PlatingLibrary object)
+            from the Plates class. 
+        """
+        self.Machined = self.Machined + [objProf]
+        pass
 
 class Extrusions(ProfileLibrary):
     """ Defines the available extruded profiles.
@@ -596,18 +641,41 @@ class Extrusions(ProfileLibrary):
             type_: Type of profile e.g. I-beam, L-beam, T-beam etc. (string)
     """
     
-    def __init__(self, profLabel, SM, Aw, tw, type_):
+    def __init__(self, profLabel, SM, Aw, tw, hw, tf, fw, pType):
         """ Inits the Extrusion objects for the profile library. """
         self.profLabel = profLabel
         self.SM = SM
         self.Aw = Aw
         self.tw = tw
-        self.type_ = type_
+        self.hw = hw
+        self.tf = tf
+        self.fw = fw
+        self.Atot = (self.tw * self.hw) + (self.tf * self.fw)
+        self.pType = pType
         pass
-#        self.f_w = f_w
-#        self.f_t = f_t
-#        self.h_w = h_w
-#        self.A_t = A_t
+    
+    def __repr__(self):
+        """ Defines how the print function should print out the profile objects. """
+        return """
+        profLabel = %s
+        SM = %d
+        Aw = %d
+        tw = %d
+        hw = %d
+        tf = %d
+        fw = %d
+        Atot = %d
+        pType = %s
+        """ % (self.profLabel,
+               self.SM,
+               self.Aw,
+               self.tw,
+               self.hw,
+               self.tf,
+               self.fw,
+               self.Atot,
+               self.pType)
+        pass
 
 
     # Store extruded profiles:
@@ -1333,7 +1401,467 @@ class Report:
         interested in, such as structural arrangement report, graphs of the
         optimization etc.
     """
-    pass
+    def __init__(self):
+        """ Inits the report object """
+        pass
+    
+    def test_report(self, filename, objStruct, objDes):
+        # Add a workbook and a worksheet.
+        name = '%s.xlsx' % (filename)
+        workbook = xlsxwriter.Workbook(name)
+        worksheet1 = workbook.add_worksheet('Calculation Results')
+        worksheet2 = workbook.add_worksheet('Used Profiles')
+        worksheet3 = workbook.add_worksheet('Topology Input')
+        worksheet4 = workbook.add_worksheet('Structural Weight')
+        
+        # Add a bold format to use to highlight cells.
+        bold = workbook.add_format({'bold': True})
+        
+        # Add numerical formats
+        oneDec = workbook.add_format() 
+        twoDec = workbook.add_format()
+        threeDec = workbook.add_format()
+        
+        # Set numerical formats to x decimals
+        oneDec.set_num_format('0.0')
+        twoDec.set_num_format('0.00')
+        threeDec.set_num_format('0.000')
+    
+        
+        """____________________WORKSHEET 1_______________________"""
+        # Adjust the column width.
+        worksheet1.set_column('A:A', 10.5)
+        worksheet1.set_column('B:B', 19.5)
+        worksheet1.set_column('C:C', 20)
+        worksheet1.set_column('D:D', 19)
+        worksheet1.set_column('E:E', 19.5)
+        worksheet1.set_column('F:F', 19.5)
+        
+        """ Panel topology """
+        # Write some data headers for panel data
+        worksheet1.write('A1', 'Plating Panel', bold)
+        worksheet1.write('B1', 'Length (mm)', bold)
+        worksheet1.write('C1', 'Width (mm)', bold)
+        worksheet1.write('D1', 'Aspect ratio', bold)
+        worksheet1.write('E1', 'Longitudinal Position (m)', bold)
+        worksheet1.write('F1', 'Design Pressure (kN/m2)', bold)
+        
+        # Panel data we want to write to the worksheet.
+        inputList = []
+        for i in range(0, objStruct.Panel.__len__()):
+            aspRat = objStruct.Panel[i].lPan/objStruct.Panel[i].b
+            assList = ([objStruct.Panel[i].panName] + [objStruct.Panel[i].lPan]
+                    + [objStruct.Panel[i].b] + [aspRat] + [objStruct.Panel[i].xPos]
+                    + [objStruct.Panel[i].pMax]
+                       )
+            inputList = inputList + [assList]
+        
+        
+        # Start from the first cell below the headers.
+        row = 1
+        col = 0
+
+        # Iterate over the data and write it out row by row.
+        for panName, lPan, wPan, AR, xPos, desPress in (inputList):
+            worksheet1.write(row, col,     panName)
+            worksheet1.write(row, col + 1, lPan)
+            worksheet1.write(row, col + 2, wPan)
+            worksheet1.write(row, col + 3, AR, threeDec)
+            worksheet1.write(row, col + 4, xPos, threeDec)
+            worksheet1.write(row, col + 5, desPress, oneDec)
+            row += 1
+        
+        """ Panel requirements """
+        # Write some data headers for panel results
+        h1 = 'A%d' % (row + 3)
+        h2 = 'B%d' % (row + 3)
+        h3 = 'C%d' % (row + 3)
+        h4 = 'D%d' % (row + 3)
+        h5 = 'E%d' % (row + 3)
+        h6 = 'F%d' % (row + 3)
+        worksheet1.write(h1, 'Plating Panel', bold)
+        worksheet1.write(h2, 'Required Thickness (mm)', bold)
+        worksheet1.write(h3, 'Min. Req. Thickness (mm)', bold)
+        worksheet1.write(h4, 'Offered Thickness (mm)', bold)
+        worksheet1.write(h5, 'Thickness Ratio', bold)
+        worksheet1.write(h6, 'Min. Thickness Ratio', bold)
+        
+        # Panel data we want to write to the worksheet.
+        inputList2 = []
+        for i in range(0, objStruct.Panel.__len__()):
+            tRat = objStruct.Panel[i].Plate.tp/objStruct.Panel[i].tReq
+            tMinRat = objStruct.Panel[i].Plate.tp/objStruct.Panel[i].tMin
+            assList2 = ([objStruct.Panel[i].panName] + [objStruct.Panel[i].tReq]
+                        + [objStruct.Panel[i].tMin] + [objStruct.Panel[i].Plate.tp]
+                        + [tRat] + [tMinRat]
+                        )
+            inputList2 = inputList2 + [assList2]
+            
+        # Start from the first cell below the headers.
+        row = row + 3
+        col = 0
+
+        # Iterate over the data and write it out row by row.
+        for panName, tReq, tMin, tp, tRat, tMinRat in (inputList2):
+            worksheet1.write(row, col,     panName)
+            worksheet1.write(row, col + 1, tReq, twoDec)
+            worksheet1.write(row, col + 2, tMin, twoDec)
+            worksheet1.write(row, col + 3, tp)
+            worksheet1.write(row, col + 4, tRat, threeDec)
+            worksheet1.write(row, col + 5, tMinRat, threeDec)
+            row += 1
+        
+        """ Stiffener topology """
+        # Write some data headers for stiffener data
+        h1 = 'A%d' % (row + 3)
+        h2 = 'B%d' % (row + 3)
+        h3 = 'C%d' % (row + 3)
+        h4 = 'D%d' % (row + 3)
+        h5 = 'E%d' % (row + 3)
+        worksheet1.write(h1, 'Stiffener', bold)
+        worksheet1.write(h2, 'Length (mm)', bold)
+        worksheet1.write(h3, 'Spacing (mm)', bold)
+        worksheet1.write(h4, 'Longitudinal Position (m)', bold)
+        worksheet1.write(h5, 'Design Pressure (kN/m2)', bold)
+        
+        # Stiffener data we want to write to the worksheet.
+        inputList3 = []
+        for i in range(0, objStruct.Stiffener.__len__()):
+            assList3 = ([objStruct.Stiffener[i].stiffName] + [objStruct.Stiffener[i].lStiff]
+                        + [objStruct.Stiffener[i].sStiff] + [objStruct.Stiffener[i].xPos]
+                        + [objStruct.Stiffener[i].pMax]
+                        )
+            inputList3 = inputList3 + [assList3]
+            
+        # Start from the first cell below the headers.
+        row = row + 3
+        col = 0
+
+        # Iterate over the data and write it out row by row.
+        for stiffName, lStiff, sStiff, xPos, pMax in (inputList3):
+            worksheet1.write(row, col,     stiffName)
+            worksheet1.write(row, col + 1, lStiff)
+            worksheet1.write(row, col + 2, sStiff)
+            worksheet1.write(row, col + 3, xPos, threeDec)
+            worksheet1.write(row, col + 4, pMax, oneDec)
+            row += 1
+            
+        """ Stiffener requirements """
+        # Write some data headers for stiffener results
+        h1 = 'A%d' % (row + 3)
+        h2 = 'B%d' % (row + 3)
+        h3 = 'C%d' % (row + 3)
+        h4 = 'D%d' % (row + 3)
+        h5 = 'E%d' % (row + 3)
+        h6 = 'F%d' % (row + 3)
+        h7 = 'G%d' % (row + 3)
+        worksheet1.write(h1, 'Stiffener', bold)
+        worksheet1.write(h2, 'Req. SM (cm3)', bold)
+        worksheet1.write(h3, 'Req. Aw (cm2)', bold)
+        worksheet1.write(h4, 'Offered SM (cm3)', bold)
+        worksheet1.write(h5, 'Offered Aw (cm2)', bold)
+        worksheet1.write(h6, 'SM Ratio', bold)
+        worksheet1.write(h7, 'Aw Ratio', bold)
+        
+        # Stiffener data we want to write to the worksheet.
+        inputList4 = []
+        for i in range(0, objStruct.Stiffener.__len__()):
+            SMRat = objStruct.Stiffener[i].Profile.SM/objStruct.Stiffener[i].SMMin
+            AwRat = objStruct.Stiffener[i].Profile.Aw/objStruct.Stiffener[i].AwMin
+            assList4 = ([objStruct.Stiffener[i].stiffName] 
+                        + [objStruct.Stiffener[i].SMMin]
+                        + [objStruct.Stiffener[i].AwMin] 
+                        + [objStruct.Stiffener[i].Profile.SM]
+                        + [objStruct.Stiffener[i].Profile.Aw] 
+                        + [SMRat] + [AwRat]
+                        )
+            inputList4 = inputList4 + [assList4]
+            
+        # Start from the first cell below the headers.
+        row = row + 3
+        col = 0
+
+        # Iterate over the data and write it out row by row.
+        for stiffName, SMMin, AwMin, SM, Aw, SMRat, AwRat in (inputList4):
+            worksheet1.write(row, col,     stiffName, threeDec)
+            worksheet1.write(row, col + 1, SMMin, threeDec)
+            worksheet1.write(row, col + 2, AwMin, threeDec)
+            worksheet1.write(row, col + 3, SM, threeDec)
+            worksheet1.write(row, col + 4, Aw, threeDec)
+            worksheet1.write(row, col + 5, SMRat, threeDec)
+            worksheet1.write(row, col + 6, AwRat, threeDec)
+            row += 1
+        
+        """____________________WORKSHEET 2_______________________"""
+        """ Used Profiles """
+        # Adjust the column width.
+        worksheet2.set_column('A:A', 20)
+        worksheet2.set_column('B:B', 15)
+        worksheet2.set_column('C:C', 17.5)
+        worksheet2.set_column('D:D', 14)
+        worksheet2.set_column('E:E', 16.5)
+        worksheet2.set_column('F:F', 6)
+        
+        # Write some data headers for panel data
+        worksheet2.write('A1', 'Profile Label', bold)
+        worksheet2.write('B1', 'Flange Width (mm)', bold)
+        worksheet2.write('C1', 'Flange Thickness (mm)', bold)
+        worksheet2.write('D1', 'Web Height (mm)', bold)
+        worksheet2.write('E1', 'Web Thickness (mm)', bold)
+        worksheet2.write('F1', 'Type', bold)
+        
+        # Stiffener data we want to write to the worksheet.
+        profiles = []
+        for i in range(0, objStruct.Stiffener.__len__()):
+            profiles = profiles + [objStruct.Stiffener[i].Profile]
+        
+        uniqueItems = list(set(profiles))
+        inputList5 = []
+        for i in range(0, uniqueItems.__len__()):
+            assList5 = ([uniqueItems[i].profLabel] + [uniqueItems[i].fw]
+                        + [uniqueItems[i].tf] + [uniqueItems[i].hw]
+                        + [uniqueItems[i].tw] + [uniqueItems[i].pType]
+                        )
+            inputList5 = inputList5 + [assList5]
+            
+                # Start from the first cell below the headers.
+        row = 1
+        col = 0
+
+        # Iterate over the data and write it out row by row.
+        for profLabel, fw, tf, hw, tw, pType in (inputList5):
+            worksheet2.write(row, col,     profLabel)
+            worksheet2.write(row, col + 1, fw, oneDec)
+            worksheet2.write(row, col + 2, tf, twoDec)
+            worksheet2.write(row, col + 3, hw, twoDec)
+            worksheet2.write(row, col + 4, tw, twoDec)
+            worksheet2.write(row, col + 5, pType)
+            row += 1
+            
+        """____________________WORKSHEET 3_______________________"""
+        """ Topology Input """
+        # Adjust the column width.
+        worksheet3.set_column('A:A', 10.5)
+        worksheet3.set_column('B:B', 15.5)
+        worksheet3.set_column('C:C', 16.5)
+        worksheet3.set_column('D:D', 17.5)
+        worksheet3.set_column('E:E', 15)
+        worksheet3.set_column('F:F', 21.5)
+        worksheet3.set_column('G:G', 6.5)
+        
+        """        Stiffeners """
+        # Write some data headers for stiffener data
+        worksheet3.write('A1', 'Stiffener', bold)
+        worksheet3.write('B1', 'ID Name(stiffName)', bold)
+        worksheet3.write('C1', 'Section Width(sGird)', bold)
+        worksheet3.write('D1', 'Section Length(sFram)', bold)
+        worksheet3.write('E1', 'x-coordinate(xPos)', bold)
+        worksheet3.write('F1', 'Number of Stiffeners(nStiff)', bold)
+        worksheet3.write('G1', 'location', bold)
+        
+        # Stiffener data we want to write to the worksheet.
+        inputList6 = []
+        for i in range(0, objStruct.Stiffener.__len__()):
+            
+            assList6 = ([objStruct.Stiffener[i].stiffType + ' ' + str(i+1)] 
+                        + [objStruct.Stiffener[i].stiffName]
+                        + [objDes.sGird] + [objDes.sFram]
+                        + [objDes.xPos] + [objDes.nStiff] 
+                        + [objDes.location]
+                        )
+            inputList6 = inputList6 + [assList6]
+        
+        # Start from the first cell below the headers.
+        row = 1
+        col = 0
+
+        # Iterate over the data and write it out row by row.
+        for stiffType, stiffName, sGird, sFrame, xPos, nStiff, location in (inputList6):
+            worksheet3.write(row, col,     stiffType)
+            worksheet3.write(row, col + 1, stiffName)
+            worksheet3.write(row, col + 2, sGird)
+            worksheet3.write(row, col + 3, sFrame)
+            worksheet3.write(row, col + 4, xPos)
+            worksheet3.write(row, col + 5, nStiff)
+            worksheet3.write(row, col + 6, location)
+            row += 1
+            
+        """     Panels """
+        # Write some data headers for panel results
+        h1 = 'A%d' % (row + 3)
+        h2 = 'B%d' % (row + 3)
+        h3 = 'C%d' % (row + 3)
+        h4 = 'D%d' % (row + 3)
+        h5 = 'E%d' % (row + 3)
+        h6 = 'F%d' % (row + 3)
+        h7 = 'G%d' % (row + 3)
+        worksheet3.write(h1, 'Panel', bold)
+        worksheet3.write(h2, 'ID Name(panName)', bold)
+        worksheet3.write(h3, 'Section Width(sGird)', bold)
+        worksheet3.write(h4, 'Section Length(sFram)', bold)
+        worksheet3.write(h5, 'x-coordinate(xPos)', bold)
+        worksheet3.write(h6, 'Number of Stiffeners(nStiff)', bold)
+        worksheet3.write(h7, 'location', bold)
+            
+        # Panel topology data we want to write to the worksheet.
+        inputList6b = []
+        for i in range(0, objStruct.Panel.__len__()):
+            
+            assList6b = (['Panel' + ' ' + str(i+1)] 
+                        + [objStruct.Panel[i].panName]
+                        + [objDes.sGird] + [objDes.sFram]
+                        + [objDes.xPos] + [objDes.nStiff] 
+                        + [objDes.location]
+                        )
+            inputList6b = inputList6b + [assList6b]
+        
+        # Start from the first cell below the headers.
+        row = row + 3
+        col = 0
+
+        # Iterate over the data and write it out row by row.
+        for Panel, panName, sGird, sFrame, xPos, nStiff, location in (inputList6b):
+            worksheet3.write(row, col,     Panel)
+            worksheet3.write(row, col + 1, panName)
+            worksheet3.write(row, col + 2, sGird)
+            worksheet3.write(row, col + 3, sFrame)
+            worksheet3.write(row, col + 4, xPos)
+            worksheet3.write(row, col + 5, nStiff)
+            worksheet3.write(row, col + 6, location)
+            row += 1
+        
+        
+        """____________________WORKSHEET 4_______________________"""
+        """ Structural Weight """
+        
+        """     Stiffeners weight """
+        # Adjust the column width.
+        worksheet4.set_column('A:A', 7)
+        worksheet4.set_column('B:B', 16.5)
+        worksheet4.set_column('C:C', 9)
+        
+        # Write some data headers for stiffener data
+        worksheet4.write('A1', 'Stiffener', bold)
+        worksheet4.write('B1', 'Length Perimeter (m)', bold)
+        worksheet4.write('C1', 'Weigth (kg)', bold)
+
+        # Stiffener data we want to write to the worksheet.
+        inputList7 = []
+        for i in range(0, objStruct.Stiffener.__len__()):
+            objStruct.Stiffener[i].calc_weight()
+            length = objStruct.Stiffener[i].lStiff*1e-3
+                    
+            assList7 = ([objStruct.Stiffener[i].stiffName] 
+                        + [length]
+                        + [objStruct.Stiffener[i].weight]
+                        )
+            inputList7 = inputList7 + [assList7]
+        inputList7 = sorted(inputList7)
+            
+        # Start from the first cell below the headers.
+        row = 1
+        col = 0
+
+        # Iterate over the data and write it out row by row.
+        for stiffName, lStiff, sWeight in (inputList7):
+            worksheet4.write(row, col,     stiffName)
+            worksheet4.write(row, col + 1, lStiff, threeDec)
+            worksheet4.write(row, col + 2, sWeight, oneDec)
+            row += 1
+        
+        # Write a total using a formula.
+        formula1 = '=SUM(B2:B%d)' % (row)
+        formula2 = '=SUM(C2:C%d)' % (row)
+        worksheet4.write(row, 0, 'Total', bold)
+        worksheet4.write(row, 1, formula1, threeDec)
+        worksheet4.write(row, 2, formula2, oneDec)
+        
+        """     Plating weight """
+        
+        # Write some data headers for stiffener data
+        worksheet4.write('E1', 'Plating', bold)
+        worksheet4.write('F1', 'Area (m2)', bold)
+        worksheet4.write('G1', 'Weigth (kg)', bold)
+        
+        # Gather all plates that have been used.
+        inputList8 = []
+        for i in range(0, objStruct.Panel.__len__()):
+            objStruct.Panel[i].calc_weight()
+                
+            assList8 = ([objStruct.Panel[i].Plate.platLabel] 
+                        + [objStruct.Panel[i].area]
+                        + [objStruct.Panel[i].weight]
+                        )
+            inputList8 = inputList8 + [assList8]
+        
+        # Sum up all areas and weight with respect plate label/thickness.
+        a = Counter()
+        w = Counter()
+        for label, area, weight in inputList8:
+            a[label] += area
+            w[label] += weight 
+        label = list(a.keys())
+        area = list(a.values())
+        weight = list(w.values())
+        
+        # Plating data we want to write to worksheet.
+        inputList9 = []
+        for i in range(0, label.__len__()):
+            sumList = [label[i]] + [area[i]] + [weight[i]]
+            inputList9 = inputList9 + [sumList]
+        inputList9 = sorted(inputList9, reverse=True)
+        
+        # Start from the first cell below the headers.
+        row = 1
+        col = 4
+
+        # Iterate over the data and write it out row by row.
+        for label, area, weight in (inputList9):
+            worksheet4.write(row, col,     label)
+            worksheet4.write(row, col + 1, area, twoDec)
+            worksheet4.write(row, col + 2, weight, oneDec)
+            row += 1
+        
+        # Write a total using a formula.
+        formula1 = '=SUM(F2:F%d)' % (row)
+        formula2 = '=SUM(G2:G%d)' % (row)
+        worksheet4.write(row, col,      'Total', bold)
+        worksheet4.write(row, col + 1, formula1, twoDec)
+        worksheet4.write(row, col + 2, formula2, twoDec)
+        
+        # format cells with colors
+
+        red = workbook.add_format({'bg_color': '#E74C3C'})
+        purple = workbook.add_format({'bg_color': '#AF7AC5'})
+        darkblue = workbook.add_format({'bg_color': '#3498DB'})
+        blue = workbook.add_format({'bg_color': '#85C1E9'})
+        green = workbook.add_format({'bg_color': '#82E0AA'})
+        
+        # Write a conditional format over a range.
+        worksheet4.conditional_format('E2:E7', {'type': 'cell',
+                                                'criteria': '==',
+                                                'value': '"AL10"',
+                                                'format': red})
+        worksheet4.conditional_format('E2:E7', {'type': 'cell',
+                                                'criteria': '==',
+                                                'value': '"AL8"',
+                                                'format': purple})
+        worksheet4.conditional_format('E2:E7', {'type': 'cell',
+                                                'criteria': '==',
+                                                'value': '"AL5"',
+                                                'format': darkblue})
+        worksheet4.conditional_format('E2:E7', {'type': 'cell',
+                                                'criteria': '==',
+                                                'value': '"AL4"',
+                                                'format': blue})
+        worksheet4.conditional_format('E2:E7', {'type': 'cell',
+                                                'criteria': '==',
+                                                'value': '"AL3"',
+                                                'format': green})
+        
+        workbook.close()
+        pass
+    
 #     Create graphs, messages, spreadsheets and all calculation outputs.
 #     Input:
 #         Vessel
@@ -1471,14 +1999,15 @@ class Designer:
         self.xPos = xPos
         pass
 
-    def create_section_topology(self, nStiff, location):
+    def create_section_topology(self, objStruct, nStiff, location):
         """ Create the topology for a section using the number of stiffeners
             and location of the section.
         """
+        self.nStiff = nStiff
+        self.location = location
         self.panWidth = []
         self.panYPos = []
         self.panZPos = []
-        self.location = location
         """ Create equally spaced stiffener coordinates. """
         if location == 'bottom':
             self.stiffYPos = numpy.linspace(0, self.sGird, nStiff+2)
@@ -1488,25 +2017,25 @@ class Designer:
                 self.panZPos = 0
                 self.panWidth = self.panWidth + [self.stiffYPos[i+1] - self.stiffYPos[i]]
                 self.panYPos = self.panYPos + [self.stiffYPos[i+1] - self.panWidth[i]/2]
+                
+            """ Create stiffener and panel objects using the section topology. """
+            for i in range(0, self.panYPos.__len__()):
+                Pan = (Panel(self.panWidth[i], self.sFram, 
+                             self.xPos, self.panYPos[i], self.location)
+                       )
+                objStruct.assign_panel(Pan)
+            for i in range(0, self.stiffYPos.__len__()-2):
+                Stiff = (Stiffener(self.sFram, self.xPos, self.stiffYPos[i+1], self.stiffZPos,
+                                   self.sStiff, self.location, 'longitudinal')
+                         )
+                objStruct.assign_stiffener(Stiff)
+                
         elif location == 'side':
             # TODO: side
             pass
 
         pass
 
-    def define_section_topology(self, objStruct):
-        """ Create stiffener and panel objects using the section topology. """
-        for i in range(0, self.panYPos.__len__()):
-            Pan = (Panel(self.panWidth[i], self.sFram, 
-                         self.xPos, self.panYPos[i], self.location)
-                   )
-            objStruct.assign_panel(Pan)
-        for i in range(0, self.stiffYPos.__len__()-2):
-            Stiff = (Stiffener(self.sFram, self.xPos, self.stiffYPos[i+1], self.stiffZPos,
-                               self.sStiff, self.location, 'longitudinal')
-                     )
-            objStruct.assign_stiffener(Stiff)
-        pass
 
     def calc_pressure_factors(self, objRule, objStruct, objVess):
         """ Loops through all structural members and calculates the pressure
@@ -1655,11 +2184,6 @@ class Designer:
                 InData = objPlaLib.Plates[-1]
 
             objStruct.Panel[i].assign_plate(InData)
-        pass
-
-    def assign_profile(self, objProf):
-        """ Assigns a Profile object to a Stiffener object. """
-        self.objProf = objProf
         pass
 
 
