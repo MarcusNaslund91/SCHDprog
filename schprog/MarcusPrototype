@@ -15,14 +15,14 @@ mDes = SP.Designer()
 mISO = SP.ISO12215('A')
 """ initialize vessel """
 # (LWL, bC, mLDC, beta04, hT, tC, V)
-mVess = SP.Vessel(2.6, 1.3, 600, 10.0, 3.0, 0.875, 6.0)
+mVess = SP.Vessel(6.851, 2.008, 4500, 30.0, 3.0, 0.875, 12.0)
 """ initialize structure """
 mStruct = SP.Structure()
 
 """ create materials """
 # (matLabel, yieldStrength, tensileStrength, elasticModulus, shearModulus, density)
 mAL_5083_O = SP.MaterialsLibrary('AL_5083_O', 125, 270, 7000, 2692, 2720)
-#AL_6082_T6 = SP.MaterialsLibrary('AL_6082_T6', 115, 170, 7000, 2692, 2830)
+mAL_6082_T6 = SP.MaterialsLibrary('AL_6082_T6', 115, 170, 7000, 2692, 2830)
 
 """ create plates """
 mPlaLib = SP.PlatingLibrary()
@@ -30,29 +30,47 @@ mPlaLib = SP.PlatingLibrary()
 mAL3 = SP.Plates('AL3', 3)
 mAL4 = SP.Plates('AL4', 4)
 mAL5 = SP.Plates('AL5', 5)
-mAL6 = SP.Plates('AL6', 6)
 mAL8 = SP.Plates('AL8', 8)
+mAL10 = SP.Plates('AL10', 10)
 mPlaLib.assign_plate(mAL3)
 mPlaLib.assign_plate(mAL4)
 mPlaLib.assign_plate(mAL5)
-mPlaLib.assign_plate(mAL6)
 mPlaLib.assign_plate(mAL8)
+mPlaLib.assign_plate(mAL10)
 
-""" create panels """
-# (b, lPan, xPos, yPos, location)
-mPan1 = SP.Panel(366, 2400, 1.2, 0.366/2, 'side')
-mPan2 = SP.Panel(280, 2500, 1.2, 0.280/2, 'bottom')
+mProfLib = SP.ProfileLibrary()
+# (profLabel, SM, Aw, tw, hw, tf, fw, pType)
+FlatBar60x5 = SP.Extrusions('Flat Bar 60 x 5', 6.179, 3.000, 5.0, 60, 0, 0, 'Flat Bar')
+mProfLib.assign_extrusion(FlatBar60x5)
 
-""" assign panels to mStructure """
-mStruct.assign_panel(mPan1)
-mStruct.assign_panel(mPan2)
+mDes.create_section(480, 845, 3.022)
+mDes.create_section_topology(mStruct, 3, 'bottom')
 
-""" assign mStructure to mVessel """
+# (longi_loc, stiff_id)
+mStruct.Panel[0].assign_nomenclature('D', 3)
+mStruct.Panel[1].assign_nomenclature('D', 4)
+mStruct.Panel[2].assign_nomenclature('D', 5)
+mStruct.Panel[3].assign_nomenclature('D', 6)
+# 
+mStruct.Stiffener[0].assign_nomenclature(2, 'D')
+mStruct.Stiffener[1].assign_nomenclature(3, 'D')
+mStruct.Stiffener[2].assign_nomenclature(4, 'D')
+
+#""" create panels """
+## (b, lPan, xPos, yPos, location)
+#mPan1 = SP.Panel(366, 2400, 1.2, 0.366/2, 'side')
+#mPan2 = SP.Panel(280, 2500, 1.2, 0.280/2, 'bottom')
+
+#""" assign panels to Structure """
+#mStruct.assign_panel(mPan1)
+#mStruct.assign_panel(mPan2)
+
+""" assign Structure to Vessel """
 mVess.assign_structure(mStruct)
 
-""" calculate pressure using mISO rules """
+""" calculate pressure using ISO rules """
 mDes.calc_pressure_factors(mISO, mStruct, mVess) # objStruct.Panel[i].'pressure factors'
-                                                 # [ruleType, kDC, kL, kAR_d, kAR_p, kZ]
+                                                 # [ruleType, kL, kAR_d, kAR_p, kZ]
 mDes.calc_design_pressures(mISO, mStruct, mVess) # objStruct.Panel[i].'scantling requirements'
                                                  # [ruleType, pMax]
 
@@ -60,14 +78,42 @@ mDes.calc_design_pressures(mISO, mStruct, mVess) # objStruct.Panel[i].'scantling
 #mStruct.Panel[i].assign_material(mAL_5083_O) # mStruct.Panel[i].Material
 """ if you wanna assign the same material to all panels """
 mDes.assign_material_to_all_panels(mStruct, mAL_5083_O) # mStruct.Panel[i].Material
+""" if you wanna assign material to a specific stiffener """
+#mStruct.Stiffener[i].assign_material(mAL_6082_T6) # mStruct.Stiffener[i].Material
+"""  if you wanna assign the same material to all stiffeners """
+mDes.assign_material_to_all_stiffeners(mStruct, mAL_6082_T6)
 
-""" calculate scnatling requirement """
+""" calculate scantling requirement """
 mDes.calc_scantling_req(mISO, mStruct, mVess) # objStruct.Panel[i].'scantling requirements'
                                               # [ruleType, k2, k3, FShear, MBend, tReq, tMin]
 
 """ assign recommended plate to all panels """
-mDes.assign_recommended_plates(mStruct, mPlaLib) # objStruct.Panel[i].Plate
+#mDes.assign_recommended_plates(mStruct, mPlaLib) # objStruct.Panel[i].Plate
+mStruct.Panel[0].assign_plate(mAL3)
+mStruct.Panel[1].assign_plate(mAL3)
+mStruct.Panel[2].assign_plate(mAL4)
+mStruct.Panel[3].assign_plate(mAL5)
 
-print('Done')
+""" assign profile to specific stiffener """
+mStruct.Stiffener[0].assign_profile(FlatBar60x5)
+mStruct.Stiffener[1].assign_profile(FlatBar60x5)
+mStruct.Stiffener[2].assign_profile(FlatBar60x5)
 
+print('calculations done')
+    
+mRep = SP.Report()
+mRep.test_report('test', mStruct, mDes)
+print('report done')
 
+""" If you wanna view all the attributes of the panels or stiffeners """
+#for i in range(0, mStruct.Panel.__len__()):
+#    for attr, value in mStruct.Panel[i].__dict__.items():
+#        print(attr, "=", value)
+#    print("___________________________________")
+#    
+#
+#for i in range(0, mStruct.Stiffener.__len__()):
+#    for attr, value in mStruct.Stiffener[i].__dict__.items():
+#        print(attr, "=", value)
+#    print("___________________________________")
+    
