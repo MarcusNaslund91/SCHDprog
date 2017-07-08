@@ -101,7 +101,8 @@ print('calculations done')
 
     
 mRep = SP.Report()
-mRep.test_report('test', mStruct, mDes)
+# (filename, objStruct, objDes=
+mRep.create_scantling_report('test', mStruct, mDes) # excel report created in same directory as schprog.py
 print('report done')
 
 """ If you wanna view all the attributes of the panels or stiffeners """
