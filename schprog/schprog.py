@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.6
 # -*- coding: utf-8 -*-
 """
 ...
@@ -28,6 +28,8 @@ class Vessel:
         
         Attributes:
             ...__inti__...
+            Objective:
+                Inits the vessel object.
             Input:
                 LWL: Length at the waterline (float, m)
                 bC: Chine beam (float, m)
@@ -41,6 +43,8 @@ class Vessel:
                 self.Input
             
             ...calc_craft_mode...
+            Objective:
+                Calculates the craft mode according to ISO rules.
             Input:
                 self.V, self.LWL
             Output:
@@ -48,6 +52,8 @@ class Vessel:
                                 displacement(2) or planing(1) (int)
             
             ...assign_structure...
+            Objective:
+                Assign Structure object as attribute to self (Vessel object).
             Input:
                 objStruct: Object created from the Structure class.
             Output: 
@@ -91,25 +97,34 @@ class Structure:
         
         Attributes:
             ...__init__...
+            Objective:
+                Inits the Structure object.
             Input:
-                -
+                objVess: Vessel object from Vessel class.
             Output:
                 self.mLDC: Loaded displacements mass of the vessel (float, kg)
-                self.Panel: Panel objects from Panel class.
+                self.Panel: Prepare empty list for Panel objects from Panel class.
+                self.Stiffener: Prepare empty list for Stiffener objects from Stiffener class.
                 
             ...assign_panel...
+            Objective:
+                Assign Panel object as attribute to self (Structure object).
             Input: 
                 objPan: Panel object
             Output:
                 self.objPan[i]
                 
             ...assign_stiffener...
+            Objective:
+                Assign Stiffener object as attribute to self (Structure object).
             Input: 
                 objStiff: Stiffener object
             Output:
                 self.objStiff[i]
             
             ...assign_global_var...
+            Objective:
+                Assign global variables from Rules as attributes to self (Structure object).
             Input:
                 ruleType: The rules that have been used for calculations (string)
                 nCG: Dynamic load factor (float, -)
@@ -117,9 +132,9 @@ class Structure:
             Output:
                 self.Input
     """
-    def __init__(self):
+    def __init__(self, objVess):
         """ Inits the Structure object. """
-        self.mLDC = 4500  # TODO: Figure out how to get value from superclass object
+        self.mLDC = objVess.mLDC
         self.Panel = []
         self.Stiffener = []
         pass
@@ -142,20 +157,14 @@ class Structure:
             self.nCG = inputVec[2]
         pass
 
-
+# TODO:
     # Methods:
-        # Define topology (first model):  
-        # Calculate weight:
-            # Panels:
-                # Area multilied by tickness
-            # stiffeners:
-                # Cross-section area multiplied by length.
+        # Calculate total weight
         # Calculate CoG:
             # Adds the mass and centre of gravity of every structural member, 
-            # then divide it by the total mass.
+            # ...then divide it by the total mass.
     
     # Output:
-        # Spacing between two stiffeners
         # Ship weight
         # CoG
 
@@ -169,6 +178,8 @@ class Stiffener(Structure):
         
         Attributes:
             ...__init__...
+            Objective:
+                Inits the stiffener objects.
             Input:
                 lStiff: Length of the stiffener (float, mm)
                 xPos: x-coordinate of the centre of the stiffener from the
@@ -186,9 +197,18 @@ class Stiffener(Structure):
                 self.Input
                          
             ...assign_nomenclature...
-            ???
+            Objective:
+                Assign nomenclature to stiffener objects as an identifier.
+            Input:
+                longiLoc: Transversal/Horizontal location around the vessel with 
+                      respect to the centreline. (int & 0.5)
+                panSpan: Which panels is the stiffener attached to. (string)
+            Output:
+                self.stiffName
             
             ...assign_press_factors...
+            Objective:
+                Assigns the pressure factor as attributes to self (Stiffener objects).
             Input:
                 ruleType: The rules that have been used for calculations (string)
                 kL: Longitudinal pressure distribution factor (0-1, -)
@@ -200,6 +220,8 @@ class Stiffener(Structure):
                 self.Input
                 
             ...assign_design_pressure...
+            Objective:
+                Assign design pressure as attribute to self (Stiffener object).
             Input:
                 ruleType: The rules that have been used for calculations (string)
                 pMax: Design pressure (float, kN/m2)
@@ -208,12 +230,18 @@ class Stiffener(Structure):
                 self.pMax
             
             ...assign_material...
+            Objective:
+                Assign a MaterialsLibrary object as attribute to self 
+                (stiffener object).
             Input:
                 Material: Material object from MaterialsLibrary class.(object)
             Output:
                self.Material
                
             ...assign_scantling_req...
+            Objective:
+                Assigns scantling requirements for stiffeners as attributes to 
+                self (stiffener object).
             Input:
                 ruleType: The rules that have been used for calculations (string)
                 AwMin: Minimum allowed shear web area (float, m2)
@@ -222,12 +250,23 @@ class Stiffener(Structure):
                 self.Input
                
             ...assign_profile...
+            Objective:
+                Assigns a ProfilesLibrary object as attribute to self 
+                (stiffener object).
             Input:
                 Profile: Profile object from ProfilesLibrary class. (object)
             Output:
                 self.Profile
             
-        Q: Calculates the actual stress?
+            ...calc_weight...
+            Objective:
+                Calculates weight of the stiffener and assignes it to self 
+                (stiffener object).
+            Input:
+                -
+            Output:
+                self.weight: Weight fo the stiffener. (float, kg)
+            
     """
     def __init__(self, lStiff, xPos, yPos, zPos, sStiff, location, stiffType):
         """ Inits the stiffener objects. """
@@ -240,7 +279,7 @@ class Stiffener(Structure):
         self.stiffType = stiffType # e.g. longitudinal, girder, frame.
         pass
 
-    def assign_nomenclature(self, sLoc, stiff_id): # TODO change this method later.
+    def assign_nomenclature(self, longiLoc, panSpan): # TODO change this method later.
         """ Assigns nomenclature to the stiffener according to its configuration. """
         if self.stiffType == 'longitudinal':
             nomenclature1 = 'L'
@@ -248,8 +287,8 @@ class Stiffener(Structure):
             #nomenclature_3 = input('stiffener panel span: ')
             #nomenclature = '%s%s %s' % (nomenclature_1, nomenclature_2, nomenclature_3)
             
-            nomenclature2 = sLoc
-            nomenclature3 = stiff_id
+            nomenclature2 = longiLoc
+            nomenclature3 = panSpan
             nomenclature = '%s%d %s' % (nomenclature1, nomenclature2, nomenclature3)
         elif self.stiffType == 'frame':
             nomenclature_1 = 'Fr'
@@ -305,7 +344,9 @@ class Stiffener(Structure):
         pass
 
     def calc_weight(self):
-        """ calculates total weight of the stiffener """
+        """ Calculates weight of a stiffener and assignes it to self 
+            (stiffener object). 
+        """
         self.weight = (self.Profile.Atot*1e-6 * self.lStiff*1e-3
                        * self.Material.density
                        )
@@ -349,10 +390,12 @@ class Panel(Shell):
         location, material and plating. Sends information to the Rules
         calculator.
         
-        Gets given a nomenclature as an identifier.
+        User assigns a nomenclature as an identifier.
         
         Attributes:
             ...__init__...
+            Objective:
+                Inits the panel objects.
             Input:
                 b: Width/Height of the panel (float, mm)
                 lPan: Length of panel (float, mm)
@@ -362,8 +405,23 @@ class Panel(Shell):
                           'side/bottom' and 'side'. (string)
             Output:
                 self.Input
+                self.area: Area of a panel, b x lPan (float, m2)
             
+            ...assign_nomenclature...
+            Objective:
+                Assigns nomenclature to the Panel as an identifier.
+            Input:
+                longiLoc: longitudinal location of panel starting from aft. 
+                          (A-Z, string)
+                stiffID: Transversal/Horizonal location around the vessel with 
+                         respect to attached stiffeners. (int & string indicating 
+                                                          lower subdivsions)
+            Output:
+                self.panName
+                
             ...assign_press_factors...
+            Objective:
+                Assigns the pressure factor as attributes to self (panel objects).
             Input:
                 ruleType: The rules that have been used for calculations (string)
                 kL: Longitudinal pressure distribution factor (0-1, -)
@@ -375,6 +433,8 @@ class Panel(Shell):
                 self.Input
             
             ...assign_design_pressure...
+            Objective:
+                Assign design pressure as attribute to self (panel object).
             Input:
                 ruleType: The rules that have been used for calculations (string)
                 pMax: Design pressure (float, kN/m2)
@@ -383,12 +443,17 @@ class Panel(Shell):
                 self.pMax
             
             ...assign_material...
+            Objetive:
+                Assigns a material object as attribute to self (panel object).
             Input:
                 Material: Material object from MaterialsLibrary class. (object)
             Output:
                 self.Material
                 
             ...assign_scantling_req...
+            Objective:
+                Assigns scantling requirements for panels as attributes to self 
+                (panel object).
             Input:
                 ruleType: The rules that have been used for calculations (string)
                 k2: Panel aspect ratio factor for bending strength (0.308-0.500, -)
@@ -401,11 +466,21 @@ class Panel(Shell):
                 self.Input
                 
             ...assign_plate...
+            Objective:
+                Assigns a plating object as attribute to self (panel object).
             Input:
                 objPlate: Plating object from the Plating class.
             Output:
                 self.objPlate
-            
+                        
+            ...calc_weight...
+            Objective:
+                Calculates weight of the panel and assignes it to self 
+                (panel object).
+            Input:
+                -
+            Output:
+                self.weight: Weight of the panel (float, kg)
             
     """
     def __init__(self, b, lPan, xPos, yPos, location):# TODO: change to method when creating topology
@@ -419,10 +494,10 @@ class Panel(Shell):
         # TODO: add z-coordinate
         pass
     
-    def assign_nomenclature(self, longi_loc, stiff_id): # TODO change this method later.
+    def assign_nomenclature(self, longiLoc, stiffID): # TODO change this method later.
         """ Assigns nomenclature to the stiffener according to its cofiguration. """
-        nomenclature1 = longi_loc
-        nomenclature2 = stiff_id
+        nomenclature1 = longiLoc
+        nomenclature2 = stiffID
         nomenclature = '%s%s' % (nomenclature1, nomenclature2)
 
         self.panName = nomenclature
@@ -472,7 +547,7 @@ class Panel(Shell):
         pass
 
     def calc_weight(self):
-        """ calculates total weight of the panel """
+        """ calculates the weight of the panel """
         self.weight = (self.area * self.Plate.tp*1e-3
                        * self.Material.density
                        )
@@ -488,10 +563,12 @@ class MaterialsLibrary:
         
         Attributes:
             ...__init__... / ...__repr__...
+            Objective:
+                Inits material objects. / Format the print function
             Input:
                 matLabel: Name of the material (string)
                 yieldStrength: Yield strength / sigmaY (float, N/mm2)
-                tensileStrength: Tensile strength / sigma_u (float, N/mm2)
+                tensileStrength: Tensile strength / sigmaU (float, N/mm2)
                 elasticModulus: Elasticity modulus (float, N/mm2)
                 shearModulus: Shear modulus (float, N/mm2)
                 density: Density (float, kg/m3)
@@ -517,11 +594,11 @@ class MaterialsLibrary:
         """ States how the print function should print out material instances. """
         return """
         matLabel = %s
-        yieldStrength = %d
-        tensileStrength = %d
-        elasticModulus = %d
-        shearModulus = %d
-        density = %d
+        yieldStrength = %d (N/mm2)
+        tensileStrength = %d (N/mm2)
+        elasticModulus = %d (N/mm2)
+        shearModulus = %d (N/mm2)
+        density = %d (kg/m3)
         """ % (self.matLabel,
                self.yieldStrength,
                self.tensileStrength,
@@ -539,18 +616,26 @@ class PlatingLibrary:
         
         Attributes:
             ...__init__...
+            Objective:
+                Inits plating library object and prepares for plate assignment.
             Input:
                 -
             Output:
                 self.Plates: Empty list for preperation of assigning plate objects (-)
             
             ...assign_plate...
+            Objective:
+                Assigns plating objects as attributes to self (PlatingLibrary object)
+                from the Plates class.
             Input:
                 Plates: List of plate objects from Plates class (-)
             Output:
                 self.Plates
             
             ...list_all_thicknesses...
+            Objective:
+                List all of the available plate thicknesses with only numbers.
+                Is used for recommended plating assignement.
             Input:
                 -
             Output:
@@ -582,6 +667,9 @@ class Plates(PlatingLibrary):
     
         Attributes:
             ...__init__... / ...__repr__...
+            Objective:
+                Inits the plates object. / Defines how the print function 
+                                           should print out the plates objects.
             Input:
                 platLabel: Name/Label of the plate (string)
                 tp: plate thickness (int, mm)
@@ -599,7 +687,7 @@ class Plates(PlatingLibrary):
         """ Defines how the print function should print out the plates objects. """
         return """
         platLabel = %s
-        tp = %d
+        tp = %d (mm)
         """ % (self.platLabel,
                self.tp)
         pass
@@ -609,7 +697,37 @@ class ProfileLibrary:
     """ Library containing structural profiles for e.g. stiffeners, girders
         and frames. User can choose between a set of available extrusions
         or define their own for machining.
+    
+    Attributes:
+            ...__init__...
+            Objective:
+                Inits the ProfileLibrary object and prepares for profile assignment.
+            Input:
+                -
+            Output:
+                self.Extrusions: Empty list for preperation of assigning extruded 
+                                 profile objects (-)
+                self.Machined: Empty list for preperation of assigning machined
+                                profile objects (-)
+                                
+            ...assign_extrusion...
+            Objective:
+                Assigns Extrusions objects as attributes to self (ProfileLibrary object)
+            Input:
+                objProf: Extrusions object from the Extrusions class.
+            Output:
+                self.Extrusions
+                
+            ...assign_machined...
+            Objective:
+                Assigns Machined objects as attributes to self (ProfileLibrary object)
+            Input:
+                objProf: Machined object from the Machined class.
+            Output:
+                self.Machined
+                
     """
+    
     def __init__(self):
         """ Inits the ProfileLibrary object. """
         self.Extrusions = []
@@ -617,15 +735,15 @@ class ProfileLibrary:
         pass
     
     def assign_extrusion(self, objProf):
-        """ Assigns plating objects as attributes to self (PlatingLibrary object)
-            from the Plates class. 
+        """ Assigns Extrusions objects as attributes to self 
+            (ProfileLibrary object) 
         """
         self.Extrusions = self.Extrusions + [objProf]
         pass
     
     def assign_machined(self, objProf):
-        """ Assigns plating objects as attributes to self (PlatingLibrary object)
-            from the Plates class. 
+        """ Assigns Machined objects as attributes to self 
+            (ProfileLibrary object) 
         """
         self.Machined = self.Machined + [objProf]
         pass
@@ -634,11 +752,23 @@ class Extrusions(ProfileLibrary):
     """ Defines the available extruded profiles.
         
         Attributes:
-            profLabel: Name/Label of the profile (string)
-            SM: Section moudulus (float, cm3)
-            Aw: Shear/Web crossection area (float, cm2)
-            tw: Thickness of the web (float, mm)
-            type_: Type of profile e.g. I-beam, L-beam, T-beam etc. (string)
+            
+            ...__init__ / __repr__...
+            Objecttive:
+                Inits the Extrusion objects for the profile library. / Defines 
+                how the print function should print out the plates objects.
+            Input:
+                profLabel: Name/Label of the profile (string)
+                SM: Section moudulus (float, cm3)
+                Aw: Shear/Web crossection area (float, cm2)
+                tw: Thickness of the web (float, mm)
+                hw: Height of the web (float, mm)
+                tf: Thickness of the flange (float, mm)
+                fw: Width of the flange (float, mm)
+                pType: Type of profile e.g. I-beam, L-beam, T-beam etc. (string)
+            Output:
+                self.Input
+                self.Atot: Cross-section area of profile (float, mm2)
     """
     
     def __init__(self, profLabel, SM, Aw, tw, hw, tf, fw, pType):
@@ -658,13 +788,13 @@ class Extrusions(ProfileLibrary):
         """ Defines how the print function should print out the profile objects. """
         return """
         profLabel = %s
-        SM = %d
-        Aw = %d
-        tw = %d
-        hw = %d
-        tf = %d
-        fw = %d
-        Atot = %d
+        SM = %d (cm3)
+        Aw = %d (cm2)
+        tw = %d (mm)
+        hw = %d (mm)
+        tf = %d (mm)
+        fw = %d (mm)
+        Atot = %d (mm2)
         pType = %s
         """ % (self.profLabel,
                self.SM,
@@ -676,18 +806,6 @@ class Extrusions(ProfileLibrary):
                self.Atot,
                self.pType)
         pass
-
-
-    # Store extruded profiles:
-        # Profile label,
-        # Flange width,
-        # Flange thickness,
-        # Web height,
-        # Web thickness,
-        # Type (flat-bar, T-shaped, L-shaped, C-shaped)
-        # Section modulus
-        # Calculted web area
-        # Cross-section area
 
 
 class Machined(ProfileLibrary):
@@ -726,6 +844,8 @@ class ISO12215(Rules):
         
         Attributes:
             ...__init__...
+            Objective:
+                Inits the ISO rules object.
             Input:
                 name: Name of the rules used, set to 'ISO' as default for ISO12215.
                 designCategory: Sea and wind conditions for which the vessel will be
@@ -740,6 +860,8 @@ class ISO12215(Rules):
                 self.designCategory
                 
             ...get_vessel_data...
+            Objective:
+                Collects data from the Vessel object to be used as input for the rules.
             Input:
                 objVess: Vessel class object
             Output:
@@ -747,6 +869,8 @@ class ISO12215(Rules):
                 See Vessel class for more information.
             
             ...calc_global_var...
+            Objective:
+                Calculates rule variables that apply to the entire vessel.
             Input:
                 [LWL, bC, mLDC, beta04, V, craftMode]
                 See Vessel class for more information.
@@ -756,6 +880,8 @@ class ISO12215(Rules):
                 nCG: Dynamic load factor (float, -)
             
             ...measure_panel...
+            Objective:
+                Collects data from Panel objects to be used as input for the rules.
             Input:
                 objPan: Panel object from the Panel class
             Output:
@@ -763,6 +889,8 @@ class ISO12215(Rules):
                 see Panel class for more information.
                 
             ...calc_panel_pressure_factors...
+            Objective:
+                Calculates the panel PRESSURE ADJUSTING FACTORS from SECTION 7
             Input:
                 [b, lPan , xPos, yPos, location, mLDC, nCG, LWL]
             Output:
@@ -774,12 +902,16 @@ class ISO12215(Rules):
                 kZ: Vertical pressure distribution factor (0-1, -)
                 
             ...measure_stiffener...
+            Objective:
+                Collects data from Stiffener objects to be used as input for the rules.
             Input:
                 objStiff: Stiffener object from the stiffener class.
             Output:
                 Stiffener data = [lStiff, xPos, yPos, zPos, sStiff, location, stiffType]
                 
             ...calc_stiff_pressure_factors...
+            Objective:
+                Calculates the stiffener PRESSURE ADJUSTING FACTORS from SECTION 7 
             Input:
                 [lStiff, xPos, yPos, zPos, sStiff, location, stiffType, mLDC, nCG, LWL]
             Output:
@@ -791,6 +923,9 @@ class ISO12215(Rules):
                 kZ: Vertical pressure distribution factor (0-1, -)
                 
             ...getpressure_factors...
+            Objective:
+                Collects the data for pressure factors from the structure and 
+                panel/stiffener objects, to be used as input for the rules.
             Input:
                 objStruct: Structure object from the Structure class.
                 objComp: Panel or Stiffener object from the Panel or Stiffener
@@ -799,6 +934,8 @@ class ISO12215(Rules):
                 Pressure factors = [kDC, kL, kAR_d, kAR_p, kZ]
                 
             ...calc_panel_pressures...
+            Objective:
+                Calculates the panel DESIGN PRESSURES from SECTION 8.
             Input:
                 [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC]
             Output:
@@ -806,6 +943,8 @@ class ISO12215(Rules):
                 pMax: Maximum/Design pressure (float, kN/m2)
                 
             ...calc_stiffener_pressures...
+            Objective:
+                Calculates the stiffener DESIGN PRESSURES from SECTION 8.
             Input:
                 [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC]
             Output:
@@ -813,6 +952,9 @@ class ISO12215(Rules):
                 pMax: Maximum/Design pressure (float, kN/m2)
             
             ...get_design_pressures...
+            Objective:
+                Collects the design pressure for a Panel/Stiffener to be used as
+                input for the rules.
             Input:
                 objComp: Panel or Stiffener object from the Panel or Stiffener
                          class respectivly.
@@ -820,6 +962,8 @@ class ISO12215(Rules):
                 pMax: Maximum/Design pressure (float, kN/m2)
                 
             ...calc_panel_req...
+            Objective:
+                Calculates the required thickness for panels.
             Input:
                 [pMax, b, lPan, location, mLDC, V, sigmaUW, sigmaY, sigmaYW]
                 where:
@@ -836,6 +980,8 @@ class ISO12215(Rules):
                 tMin: Single-skin plating minimum thickness for the hull (float, mm)
                 
             ...calc_stiff_req...
+            Objective:
+                Calculates the STIFFENING MEMBERS REQUIREMENTS, SECTION 11.
             Input:
                 [pMax, lStiff, sStiff, sigmaYW]
             Output:
@@ -916,7 +1062,7 @@ class ISO12215(Rules):
 
 
     def calc_panel_pressure_factors(self, inputVec):
-        """ Calculates the PRESSURE ADJUSTING FACTORS from SECTION 7 """
+        """ Calculates the panel PRESSURE ADJUSTING FACTORS from SECTION 7 """
         [b, lPan , xPos, yPos, location, mLDC, nCG, LWL] = inputVec
 
         """ LONGITUDINAL PRESSURE DISTRIBUTION FACTOR 'kL', SECTION 7.4
@@ -1008,7 +1154,7 @@ class ISO12215(Rules):
         return [lStiff, xPos, yPos, zPos, sStiff, location, stiffType]
 
     def calc_stiff_pressure_factors(self, inputVec): 
-        """ Calculates the PRESSURE ADJUSTING FACTORS from SECTION 7 """
+        """ Calculates the stiffener PRESSURE ADJUSTING FACTORS from SECTION 7 """
         [lStiff, xPos, yPos, zPos, sStiff, location, stiffType, mLDC, nCG, LWL] = inputVec
         
         """ LONGITUDINAL PRESSURE DISTRIBUTION FACTOR 'kL', SECTION 7.4
@@ -1099,7 +1245,7 @@ class ISO12215(Rules):
         return [kDC, kL, kAR_d, kAR_p, kZ]
 
     def calc_panel_pressures(self, inputVec):
-        """" Calculates the DESIGN PRESSURES from SECTION 8. """
+        """" Calculates the panel DESIGN PRESSURES from SECTION 8. """
         
         """ MOTOR CRAFT DESIGN PRESSURE, SECTION 8.1 """
         [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC] = inputVec
@@ -1155,7 +1301,7 @@ class ISO12215(Rules):
 
 
     def calc_stiffener_pressures(self, inputVec):
-        """" DESIGN PRESSURES, SECTION 8. """
+        """" Calculates the stiffener DESIGN PRESSURES, SECTION 8. """
         
         """ MOTOR CRAFT DESIGN PRESSURE, SECTION 8.1 """
         [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC] = inputVec
@@ -1218,7 +1364,7 @@ class ISO12215(Rules):
         return [pMax]
 
     def calc_panel_req(self, inputVec):
-        """ Calculated the required thickness for panels. """
+        """ Calculates the required thickness for panels. """
         [pMax, b, lPan, location, mLDC, V, sigmaUW, sigmaY, sigmaYW] = inputVec
 
         """ Panel aspect ratio factor, section 10.1.2. """
@@ -1298,7 +1444,7 @@ class ISO12215(Rules):
 
     #  rewrite some of these into constraints later
     def calc_stiff_req(self, inputVec):
-        """ STIFFENING MEMBERS REQUIREMENTS, SECTION 11. """
+        """ Calculates the STIFFENING MEMBERS REQUIREMENTS, SECTION 11. """
         [pMax, lStiff, sStiff, sigmaYW] = inputVec
 
         
@@ -1380,19 +1526,12 @@ class ISO12215(Rules):
 #        else:
 #            pass
         
-        
-
-
+# TODO:
     # Methods:
-        # List of elements (panel and stiffener)
         # Calculate minimal structural requirements for each member
         # Check maximum proportions between dimensions within a stiffener
 
     # Output:
-        # Required panel thickness
-        # Minimum panel thickness
-        # Minimum stiffener web area
-        # Minimum stiffener section modulus
         # Dimension proportions
 
 
@@ -1400,12 +1539,33 @@ class Report:
     """ Creates and updates all the relevant information that the user is
         interested in, such as structural arrangement report, graphs of the
         optimization etc.
+        
+        Attributes:
+            ...__init__...
+            Objective:
+                Inits the report object.
+            Input:
+                -
+            Output:
+                self
+                
+            ...create_scantling_report...
+            Objective:
+                Create an excel report using 'xlsxwriter' that shows the 
+                scantlings and requirements, used profiles, topology metadata 
+                input and structural weight.
+            Input:
+                filename: name of the excel file. (string)
+                objStruct: Structure object
+                objDes: Designer object
+            Output:
+                excel report
     """
     def __init__(self):
         """ Inits the report object """
         pass
     
-    def test_report(self, filename, objStruct, objDes):
+    def create_scantling_report(self, filename, objStruct, objDes):
         # Add a workbook and a worksheet.
         name = '%s.xlsx' % (filename)
         workbook = xlsxwriter.Workbook(name)
@@ -1416,12 +1576,14 @@ class Report:
         
         # Add a bold format to use to highlight cells.
         bold = workbook.add_format({'bold': True})
+        # Add a bold format with a bottom border for table titles.
+        tabletitle = workbook.add_format({'bold': True, 'bottom': True, 
+                                          'align': 'center', 'valign': 'vcenter',})
         
         # Add numerical formats
         oneDec = workbook.add_format() 
         twoDec = workbook.add_format()
         threeDec = workbook.add_format()
-        
         # Set numerical formats to x decimals
         oneDec.set_num_format('0.0')
         twoDec.set_num_format('0.00')
@@ -1526,25 +1688,36 @@ class Report:
         
         # Stiffener data we want to write to the worksheet.
         inputList3 = []
-        for i in range(0, objStruct.Stiffener.__len__()):
-            assList3 = ([objStruct.Stiffener[i].stiffName] + [objStruct.Stiffener[i].lStiff]
-                        + [objStruct.Stiffener[i].sStiff] + [objStruct.Stiffener[i].xPos]
-                        + [objStruct.Stiffener[i].pMax]
-                        )
-            inputList3 = inputList3 + [assList3]
+        
+        if objStruct.Stiffener != []:
             
-        # Start from the first cell below the headers.
-        row = row + 3
-        col = 0
-
-        # Iterate over the data and write it out row by row.
-        for stiffName, lStiff, sStiff, xPos, pMax in (inputList3):
-            worksheet1.write(row, col,     stiffName)
-            worksheet1.write(row, col + 1, lStiff)
-            worksheet1.write(row, col + 2, sStiff)
-            worksheet1.write(row, col + 3, xPos, threeDec)
-            worksheet1.write(row, col + 4, pMax, oneDec)
-            row += 1
+            for i in range(0, objStruct.Stiffener.__len__()):
+                assList3 = ([objStruct.Stiffener[i].stiffName] + [objStruct.Stiffener[i].lStiff]
+                            + [objStruct.Stiffener[i].sStiff] + [objStruct.Stiffener[i].xPos]
+                            + [objStruct.Stiffener[i].pMax]
+                            )
+                inputList3 = inputList3 + [assList3]
+                
+            # Start from the first cell below the headers.
+            row = row + 3
+            col = 0
+    
+            # Iterate over the data and write it out row by row.
+            for stiffName, lStiff, sStiff, xPos, pMax in (inputList3):
+                worksheet1.write(row, col,     stiffName)
+                worksheet1.write(row, col + 1, lStiff)
+                worksheet1.write(row, col + 2, sStiff)
+                worksheet1.write(row, col + 3, xPos, threeDec)
+                worksheet1.write(row, col + 4, pMax, oneDec)
+                row += 1
+        
+        else:
+            inputList3 = 'None'
+            # Start from the first cell below the headers.
+            row = row + 3
+            col = 0
+            worksheet1.write(row, col,     inputList3)
+            
             
         """ Stiffener requirements """
         # Write some data headers for stiffener results
@@ -1565,32 +1738,40 @@ class Report:
         
         # Stiffener data we want to write to the worksheet.
         inputList4 = []
-        for i in range(0, objStruct.Stiffener.__len__()):
-            SMRat = objStruct.Stiffener[i].Profile.SM/objStruct.Stiffener[i].SMMin
-            AwRat = objStruct.Stiffener[i].Profile.Aw/objStruct.Stiffener[i].AwMin
-            assList4 = ([objStruct.Stiffener[i].stiffName] 
-                        + [objStruct.Stiffener[i].SMMin]
-                        + [objStruct.Stiffener[i].AwMin] 
-                        + [objStruct.Stiffener[i].Profile.SM]
-                        + [objStruct.Stiffener[i].Profile.Aw] 
-                        + [SMRat] + [AwRat]
-                        )
-            inputList4 = inputList4 + [assList4]
-            
-        # Start from the first cell below the headers.
-        row = row + 3
-        col = 0
-
-        # Iterate over the data and write it out row by row.
-        for stiffName, SMMin, AwMin, SM, Aw, SMRat, AwRat in (inputList4):
-            worksheet1.write(row, col,     stiffName, threeDec)
-            worksheet1.write(row, col + 1, SMMin, threeDec)
-            worksheet1.write(row, col + 2, AwMin, threeDec)
-            worksheet1.write(row, col + 3, SM, threeDec)
-            worksheet1.write(row, col + 4, Aw, threeDec)
-            worksheet1.write(row, col + 5, SMRat, threeDec)
-            worksheet1.write(row, col + 6, AwRat, threeDec)
-            row += 1
+        if objStruct.Stiffener != []:
+            for i in range(0, objStruct.Stiffener.__len__()):
+                SMRat = objStruct.Stiffener[i].Profile.SM/objStruct.Stiffener[i].SMMin
+                AwRat = objStruct.Stiffener[i].Profile.Aw/objStruct.Stiffener[i].AwMin
+                assList4 = ([objStruct.Stiffener[i].stiffName] 
+                            + [objStruct.Stiffener[i].SMMin]
+                            + [objStruct.Stiffener[i].AwMin] 
+                            + [objStruct.Stiffener[i].Profile.SM]
+                            + [objStruct.Stiffener[i].Profile.Aw] 
+                            + [SMRat] + [AwRat]
+                            )
+                inputList4 = inputList4 + [assList4]
+                
+            # Start from the first cell below the headers.
+            row = row + 3
+            col = 0
+    
+            # Iterate over the data and write it out row by row.
+            for stiffName, SMMin, AwMin, SM, Aw, SMRat, AwRat in (inputList4):
+                worksheet1.write(row, col,     stiffName, threeDec)
+                worksheet1.write(row, col + 1, SMMin, threeDec)
+                worksheet1.write(row, col + 2, AwMin, threeDec)
+                worksheet1.write(row, col + 3, SM, threeDec)
+                worksheet1.write(row, col + 4, Aw, threeDec)
+                worksheet1.write(row, col + 5, SMRat, threeDec)
+                worksheet1.write(row, col + 6, AwRat, threeDec)
+                row += 1
+        
+        else:
+            # Start from the first cell below the headers.
+            row = row + 3
+            col = 0
+            # Write data
+            worksheet1.write(row, col, 'None')
         
         """____________________WORKSHEET 2_______________________"""
         """ Used Profiles """
@@ -1627,16 +1808,19 @@ class Report:
                 # Start from the first cell below the headers.
         row = 1
         col = 0
-
-        # Iterate over the data and write it out row by row.
-        for profLabel, fw, tf, hw, tw, pType in (inputList5):
-            worksheet2.write(row, col,     profLabel)
-            worksheet2.write(row, col + 1, fw, oneDec)
-            worksheet2.write(row, col + 2, tf, twoDec)
-            worksheet2.write(row, col + 3, hw, twoDec)
-            worksheet2.write(row, col + 4, tw, twoDec)
-            worksheet2.write(row, col + 5, pType)
-            row += 1
+        
+        if inputList5 != []:
+            # Iterate over the data and write it out row by row.
+            for profLabel, fw, tf, hw, tw, pType in (inputList5):
+                worksheet2.write(row, col,     profLabel)
+                worksheet2.write(row, col + 1, fw, oneDec)
+                worksheet2.write(row, col + 2, tf, twoDec)
+                worksheet2.write(row, col + 3, hw, twoDec)
+                worksheet2.write(row, col + 4, tw, twoDec)
+                worksheet2.write(row, col + 5, pType)
+                row += 1
+        else:
+            worksheet2.write(row, col, 'None')
             
         """____________________WORKSHEET 3_______________________"""
         """ Topology Input """
@@ -1648,6 +1832,10 @@ class Report:
         worksheet3.set_column('E:E', 15)
         worksheet3.set_column('F:F', 21.5)
         worksheet3.set_column('G:G', 6.5)
+        
+        """ insert image explaining structure nomenclature """
+        worksheet3.insert_image('I2', '../schprog/nomenclature_longi.png')
+        worksheet3.insert_image('I17', '../schprog/nomenclature_trans.png')
         
         """        Stiffeners """
         # Write some data headers for stiffener data
@@ -1661,30 +1849,37 @@ class Report:
         
         # Stiffener data we want to write to the worksheet.
         inputList6 = []
-        for i in range(0, objStruct.Stiffener.__len__()):
+        if objStruct.Stiffener != []:
+            for i in range(0, objStruct.Stiffener.__len__()):
+                
+                assList6 = ([objStruct.Stiffener[i].stiffType + ' ' + str(i+1)] 
+                            + [objStruct.Stiffener[i].stiffName]
+                            + [objDes.sGird] + [objDes.sFram]
+                            + [objDes.xPos] + [objDes.nStiff] 
+                            + [objDes.location]
+                            )
+                inputList6 = inputList6 + [assList6]
             
-            assList6 = ([objStruct.Stiffener[i].stiffType + ' ' + str(i+1)] 
-                        + [objStruct.Stiffener[i].stiffName]
-                        + [objDes.sGird] + [objDes.sFram]
-                        + [objDes.xPos] + [objDes.nStiff] 
-                        + [objDes.location]
-                        )
-            inputList6 = inputList6 + [assList6]
-        
-        # Start from the first cell below the headers.
-        row = 1
-        col = 0
-
-        # Iterate over the data and write it out row by row.
-        for stiffType, stiffName, sGird, sFrame, xPos, nStiff, location in (inputList6):
-            worksheet3.write(row, col,     stiffType)
-            worksheet3.write(row, col + 1, stiffName)
-            worksheet3.write(row, col + 2, sGird)
-            worksheet3.write(row, col + 3, sFrame)
-            worksheet3.write(row, col + 4, xPos)
-            worksheet3.write(row, col + 5, nStiff)
-            worksheet3.write(row, col + 6, location)
-            row += 1
+            # Start from the first cell below the headers.
+            row = 1
+            col = 0
+    
+            # Iterate over the data and write it out row by row.
+            for stiffType, stiffName, sGird, sFrame, xPos, nStiff, location in (inputList6):
+                worksheet3.write(row, col,     stiffType)
+                worksheet3.write(row, col + 1, stiffName)
+                worksheet3.write(row, col + 2, sGird)
+                worksheet3.write(row, col + 3, sFrame)
+                worksheet3.write(row, col + 4, xPos)
+                worksheet3.write(row, col + 5, nStiff)
+                worksheet3.write(row, col + 6, location)
+                row += 1
+        else:
+            # Start from the first cell below the headers.
+            row = 1
+            col = 0
+            # Write data
+            worksheet3.write(row, col, 'None')
             
         """     Panels """
         # Write some data headers for panel results
@@ -1747,36 +1942,52 @@ class Report:
 
         # Stiffener data we want to write to the worksheet.
         inputList7 = []
-        for i in range(0, objStruct.Stiffener.__len__()):
-            objStruct.Stiffener[i].calc_weight()
-            length = objStruct.Stiffener[i].lStiff*1e-3
-                    
-            assList7 = ([objStruct.Stiffener[i].stiffName] 
-                        + [length]
-                        + [objStruct.Stiffener[i].weight]
-                        )
-            inputList7 = inputList7 + [assList7]
-        inputList7 = sorted(inputList7)
+        if objStruct.Stiffener != []:
+            for i in range(0, objStruct.Stiffener.__len__()):
+                objStruct.Stiffener[i].calc_weight()
+                length = objStruct.Stiffener[i].lStiff*1e-3
+                        
+                assList7 = ([objStruct.Stiffener[i].stiffName] 
+                            + [length]
+                            + [objStruct.Stiffener[i].weight]
+                            )
+                inputList7 = inputList7 + [assList7]
+            inputList7 = sorted(inputList7)
+                
+            # Start from the first cell below the headers.
+            row = 1
+            col = 0
+    
+            # Iterate over the data and write it out row by row.
+            for stiffName, lStiff, sWeight in (inputList7):
+                worksheet4.write(row, col,     stiffName)
+                worksheet4.write(row, col + 1, lStiff, threeDec)
+                worksheet4.write(row, col + 2, sWeight, oneDec)
+                row += 1
             
-        # Start from the first cell below the headers.
-        row = 1
-        col = 0
+            rowt = row + 1 # this is used for the total structural weigth
+                
+            # Write a total using a formula.
+            formula1 = '=SUM(B2:B%d)' % (row)
+            formula2 = '=SUM(C2:C%d)' % (row)
+            worksheet4.write(row, 0, 'Total', bold)
+            worksheet4.write(row, 1, formula1, threeDec)
+            worksheet4.write(row, 2, formula2, oneDec)
+            
+        else:
+            # Start from the first cell below the headers.
+            row = 1
+            col = 0
+            # Write data
+            worksheet4.write(row, col,     'None')
+            
 
-        # Iterate over the data and write it out row by row.
-        for stiffName, lStiff, sWeight in (inputList7):
-            worksheet4.write(row, col,     stiffName)
-            worksheet4.write(row, col + 1, lStiff, threeDec)
-            worksheet4.write(row, col + 2, sWeight, oneDec)
-            row += 1
-        
-        # Write a total using a formula.
-        formula1 = '=SUM(B2:B%d)' % (row)
-        formula2 = '=SUM(C2:C%d)' % (row)
-        worksheet4.write(row, 0, 'Total', bold)
-        worksheet4.write(row, 1, formula1, threeDec)
-        worksheet4.write(row, 2, formula2, oneDec)
         
         """     Plating weight """
+        # Adjust the column width.
+        worksheet4.set_column('E:E', 13.5)
+        worksheet4.set_column('F:F', 8)
+        worksheet4.set_column('G:G', 9)
         
         # Write some data headers for stiffener data
         worksheet4.write('E1', 'Plating', bold)
@@ -1823,7 +2034,7 @@ class Report:
             row += 1
         
         # Write a total using a formula.
-        formula1 = '=SUM(F2:F%d)' % (row)
+        formula1 = '=SUM(C2:C%d)' % (row)
         formula2 = '=SUM(G2:G%d)' % (row)
         worksheet4.write(row, col,      'Total', bold)
         worksheet4.write(row, col + 1, formula1, twoDec)
@@ -1859,24 +2070,25 @@ class Report:
                                                 'value': '"AL3"',
                                                 'format': green})
         
+        # Write a total using a formula.
+        row = row + 2
+        merge = 'E%d:F%d' % (row+1, row+1)
+        formula1 = '=C%d' % (rowt)
+        formula2 = '=G%d' % (row - 1)
+        formula3 = '=SUM(F%d:F%d)' % (row+2, row+3)
+        worksheet4.merge_range(merge, 'Total Structural Weight (kg)', tabletitle)
+        worksheet4.write(row + 1,     col,       'Stiffeners Weight')
+        worksheet4.write(row + 2,     col,           'Panels Weight')
+        worksheet4.write(row + 3,     col,                   'Total', bold)
+        worksheet4.write(row + 1, col + 1,                  formula1, twoDec)
+        worksheet4.write(row + 2, col + 1,                  formula2, twoDec)
+        worksheet4.write(row + 3, col + 1,                  formula3, twoDec)
         workbook.close()
         pass
     
 #     Create graphs, messages, spreadsheets and all calculation outputs.
-#     Input:
-#         Vessel
-#         MaterialsLibrary
-#         Structure
-#         Structure.Shell
-#         Structure.Shell.Panel
-#         PlatingLibrary
-#         Structure.Stiffener
-#         ProfileLibrary
-#         ISO12215
 #        
 #     Methods:
-#         List outputs with units
-#         Create spreadsheets containing each structural member and the SA.
 #         Add any important messages (different modes e.g. user mode, developer mode?)
 #         Create graphs from e.g. the optimization or to help with other things.
 #         Create graph of nomenclature using the vessel dimensions and SA.(this
@@ -1884,7 +2096,6 @@ class Report:
 #         ...also to get a good overview of the initial SA.)
 #        
 #     Output:
-#         Calculation outputs
 #         Spreadsheets
 #         Messages
 #         Graphs
@@ -1897,12 +2108,17 @@ class Designer:
         
         Attributes:
             ...__init__...
+            Objective:
+                Inits the Designer objects.
             Input:
                 -
             Output:
                 self
                 
             ...create_section...
+            Objective:
+                Create a section between two frames and two girder, consisting of
+                panels and stiffeners.
             Input:
                 sGird: Spacing/Distance between two girders (float, mm)
                 sFram: Spacing/Distance between two frames (float, mm)
@@ -1911,7 +2127,12 @@ class Designer:
                 self.Input
                 
             ...create_section_topology...
+            Objective:
+                Create the topology for a section using the number of stiffeners
+                and location of the section. Inits the panel and stiffener objects
+                and assigns them to the structure object.
             Input:
+                objStruct: Structure object
                 nStiff: Number of stiffeners on one section (int, -)
                 location: location of the section e.g 'bottom' & 'side' (string)
             Output:
@@ -1926,16 +2147,15 @@ class Designer:
                 self.stiffZPos: z-coordinate for a stiffener with respect to the keel (float, mm)
                 self.sStiff: Spacing/Distance between two stiffeners (float, mm)
                 
-            ...define_section_topology...
-            Input:
-                objStruct
-            Output:
                 objPan: Panel object
                 objStruct.Panel[i]: Panel objects assigned to structure object
                 objStiff: Stiffener object
                 objStruct.Stiffener[i]: Stiffener objects assigned to structure object
                 
             ...calc_pressure_factors...
+            Objective:
+                Loops through all structural members and calculates the pressure
+                factors.
             Input:
                 objRule: Rules child object. The rules that will be used for requirements.
                 objStruct: Structure object from the Structure class.
@@ -1946,6 +2166,9 @@ class Designer:
                 [ruleType, kDC, kL, kAR_d, kAR_p, kZ]
             
             ...calc_design_pressures...
+            Objective:
+                Loops through all structural members and calculates the design 
+                pressures.
             Input:
                 [objRule, objStruct, objVess]
             Output:
@@ -1954,6 +2177,9 @@ class Designer:
                 [ruleType, pMax]
                 
             ...calc_scantling_req...
+            Objective:
+                Loops through all structural members and calculates the scantling
+                requirements.
             Input:
                 [objRule, objStruct, objVess]
             Output:
@@ -1963,6 +2189,8 @@ class Designer:
                 [ruleType, AwMin, SMMin]
                 
             ...assign_material_to_all_panels...
+            Objective:
+                Assigns the same material object to all panels.
             Input:
                 objStruct
                 objMat: Material object from the MaterialsLibrary class
@@ -1971,6 +2199,8 @@ class Designer:
                 See more information in the MaterialsLibary class.
                 
             ...assign_material_to_all_stiffeners...
+            Objective:
+                Assigns the same material object to all stiffeners.
             Input:
                 objStruct
                 objMat: Material object from the MaterialsLibrary class
@@ -1979,6 +2209,15 @@ class Designer:
                 See more information in the MaterialsLibary class.
                 
             ...assign_recommended_plates...
+            Objective:
+                Assigns the recommended Plating object to all Panel objects.
+                It collects all the available thicknesses and put them in a list.
+                For each panel it will find the position in the list of the closest
+                required thickness rounded up. It will then find the plating
+                object that has the same thickness as the one found in the list and
+                assign it to the panel. If there is there is not plate with the
+                required thickness an error will occur and the largest/thickest 
+                plate will be assigned.
             Input:
                 objStruct
                 objPlaLib: Plating library from the PlatingLibrary class
@@ -2001,7 +2240,8 @@ class Designer:
 
     def create_section_topology(self, objStruct, nStiff, location):
         """ Create the topology for a section using the number of stiffeners
-            and location of the section.
+            and location of the section. Inits panel and stiffener objects and
+            assigns them to the structure object.
         """
         self.nStiff = nStiff
         self.location = location
@@ -2033,7 +2273,9 @@ class Designer:
         elif location == 'side':
             # TODO: side
             pass
-
+        nrpan = objStruct.Panel.__len__()
+        nrstiff = objStruct.Stiffener.__len__()
+        print('%d panels and %d stiffeners have been created' % (nrpan, nrstiff))
         pass
 
 
@@ -2057,7 +2299,7 @@ class Designer:
             PressFac = objRule.calc_panel_pressure_factors(InData)
 
             objStruct.Panel[i].assign_press_factors(PressFac)
-            print("Testing1P")
+            print("Panel %d pressure factors calculated" % i)
 
         for i in range(0,objStruct.Stiffener.__len__()):
             """ Stiffener pressure factors """
@@ -2068,7 +2310,7 @@ class Designer:
             PressFac = objRule.calc_stiff_pressure_factors(InData)
             
             objStruct.Stiffener[i].assign_press_factors(PressFac)
-            print("Testing1S")
+            print("Stiffener %d pressure factors calculated" % i)
         pass
 
 
@@ -2091,7 +2333,7 @@ class Designer:
             DesPress = objRule.calc_panel_pressures(InData)
 
             objStruct.Panel[i].assign_design_pressure(DesPress)
-            print("Testing2P")
+            print("Panel %d design pressure calculated" % i)
             
         for i in range(0, objStruct.Stiffener.__len__()):
             """ Stiffener design pressures """
@@ -2105,7 +2347,7 @@ class Designer:
             DesPress = objRule.calc_stiffener_pressures(InData)
 
             objStruct.Stiffener[i].assign_design_pressure(DesPress)
-            print("Testing2S")
+            print("Stiffener %d design pressure calculated" % i)
         pass
 
     def calc_scantling_req(self, objRule, objStruct, objVess):
@@ -2130,7 +2372,7 @@ class Designer:
             PanReq = objRule.calc_panel_req(InData)
 
             objStruct.Panel[i].assign_scantling_req(PanReq)
-            print("Testing3P")
+            print("Panel %d requirements calculated" % i)
             
         for i in range(0, objStruct.Stiffener.__len__()):
             """ Stiffener requirements """
@@ -2145,7 +2387,7 @@ class Designer:
             StiffReq = objRule.calc_stiff_req(InData)
 
             objStruct.Stiffener[i].assign_scantling_req(StiffReq)
-            print("Testing3S")
+            print("Stiffener %d requirements calculated" % i)
         pass
 
 
