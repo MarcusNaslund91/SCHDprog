@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 # -*- coding: utf-8 -*-
 """
 Created on Wed Jun 14 08:30:14 2017
@@ -18,6 +18,8 @@ mISO = SP.ISO12215('A')
 mVess = SP.Vessel(6.851, 2.008, 4500, 30.0, 3.0, 0.875, 12.0)
 """ initialize structure """
 mStruct = SP.Structure(mVess)
+""" assign Structure to Vessel """
+mVess.assign_structure(mStruct)
 
 """ create materials """
 # (matLabel, yieldStrength, tensileStrength, elasticModulus, shearModulus, density)
@@ -41,8 +43,64 @@ mPlaLib.assign_plate(mAL10)
 """ create profiles """
 mProfLib = SP.ProfileLibrary()
 # (profLabel, SM, Aw, tw, hw, tf, fw, pType)
-FlatBar60x5 = SP.Extrusions('Flat Bar 60 x 5', 6.179, 3.000, 5.0, 60, 0, 0, 'Flat Bar')
-mProfLib.assign_extrusion(FlatBar60x5)
+mFlatBar60x5 = SP.Extrusions('Flat Bar 60 x 5', 6.179, 3.000, 5.0, 60, 0, 0, 'Flat Bar')
+mFlatBar61x5 = SP.Extrusions('Flat Bar 61 x 5', 6.170, 3.050, 5.0, 61, 0, 0, 'Flat Bar')
+mFlatBar62x6 = SP.Extrusions('Flat Bar 62 x 6', 8.824, 3.720, 6.0, 62, 0, 0, 'Flat Bar')
+
+mProfLib.assign_extrusion(mFlatBar60x5)
+mProfLib.assign_extrusion(mFlatBar61x5)
+mProfLib.assign_extrusion(mFlatBar62x6)
+
+# (profLabel, tw, hw, tf, fw, pType)
+mFlatBar36x3 = SP.Machined('Flat Bar 36 x 3', 3.0, 36.0, 0, 0, 'Flat Bar')
+mFlatBar35x3 = SP.Machined('Flat Bar 35 x 3', 3.0, 35.0, 0, 0, 'Flat Bar')
+mFlatBar34x3 = SP.Machined('Flat Bar 34 x 3', 3.0, 34.0, 0, 0, 'Flat Bar')
+mFlatBar33x3 = SP.Machined('Flat Bar 33 x 3', 3.0, 33.0, 0, 0, 'Flat Bar')
+mFlatBar32x3 = SP.Machined('Flat Bar 32 x 3', 3.0, 32.0, 0, 0, 'Flat Bar')
+
+mFlatBar48x4 = SP.Machined('Flat Bar 48 x 4', 4.0, 48.0, 0, 0, 'Flat Bar')
+mFlatBar47x4 = SP.Machined('Flat Bar 47 x 4', 4.0, 47.0, 0, 0, 'Flat Bar')
+mFlatBar46x4 = SP.Machined('Flat Bar 46 x 4', 4.0, 46.0, 0, 0, 'Flat Bar')
+mFlatBar45x4 = SP.Machined('Flat Bar 45 x 4', 4.0, 45.0, 0, 0, 'Flat Bar')
+mFlatBar44x4 = SP.Machined('Flat Bar 44 x 4', 4.0, 44.0, 0, 0, 'Flat Bar')
+
+mFlatBar60x5 = SP.Machined('Flat Bar 60 x 5', 5.0, 60.0, 0, 0, 'Flat Bar')
+mFlatBar59x5 = SP.Machined('Flat Bar 59 x 5', 5.0, 59.0, 0, 0, 'Flat Bar')
+mFlatBar58x5 = SP.Machined('Flat Bar 58 x 5', 5.0, 58.0, 0, 0, 'Flat Bar')
+mFlatBar57x5 = SP.Machined('Flat Bar 57 x 5', 5.0, 57.0, 0, 0, 'Flat Bar')
+mFlatBar56x5 = SP.Machined('Flat Bar 56 x 5', 5.0, 56.0, 0, 0, 'Flat Bar')
+mFlatBar55x5 = SP.Machined('Flat Bar 55 x 5', 5.0, 55.0, 0, 0, 'Flat Bar')
+mFlatBar54x5 = SP.Machined('Flat Bar 54 x 5', 5.0, 54.0, 0, 0, 'Flat Bar')
+mFlatBar53x5 = SP.Machined('Flat Bar 53 x 5', 5.0, 53.0, 0, 0, 'Flat Bar')
+mFlatBar52x5 = SP.Machined('Flat Bar 52 x 5', 5.0, 52.0, 0, 0, 'Flat Bar')
+mFlatBar51x5 = SP.Machined('Flat Bar 51 x 5', 5.0, 51.0, 0, 0, 'Flat Bar')
+mFlatBar50x5 = SP.Machined('Flat Bar 50 x 5', 5.0, 50.0, 0, 0, 'Flat Bar')
+
+
+mProfLib.assign_machined(mFlatBar36x3)
+mProfLib.assign_machined(mFlatBar35x3)
+mProfLib.assign_machined(mFlatBar34x3)
+mProfLib.assign_machined(mFlatBar33x3)
+mProfLib.assign_machined(mFlatBar32x3)
+
+mProfLib.assign_machined(mFlatBar48x4)
+mProfLib.assign_machined(mFlatBar47x4)
+mProfLib.assign_machined(mFlatBar46x4)
+mProfLib.assign_machined(mFlatBar45x4)
+mProfLib.assign_machined(mFlatBar44x4)
+
+mProfLib.assign_machined(mFlatBar60x5)
+mProfLib.assign_machined(mFlatBar59x5)
+mProfLib.assign_machined(mFlatBar58x5)
+mProfLib.assign_machined(mFlatBar57x5)
+mProfLib.assign_machined(mFlatBar56x5)
+mProfLib.assign_machined(mFlatBar55x5)
+mProfLib.assign_machined(mFlatBar54x5)
+mProfLib.assign_machined(mFlatBar53x5)
+mProfLib.assign_machined(mFlatBar52x5)
+mProfLib.assign_machined(mFlatBar51x5)
+mProfLib.assign_machined(mFlatBar50x5)
+
 
 """ create a section (stiffened panel between two girder ans two frames) """
 # (sGird, sFram, xPos)
@@ -53,6 +111,7 @@ mDes.create_section_topology(mStruct, 3, 'bottom')
 
 """ assign nomenclature to panels and stiffeners"""
 # (longiLoc, stiffID) # stiffID is which stiffeners is this panel attached to (longiLoc)
+
 mStruct.Panel[0].assign_nomenclature('D', 3)
 mStruct.Panel[1].assign_nomenclature('D', 4)
 mStruct.Panel[2].assign_nomenclature('D', 5)
@@ -63,8 +122,7 @@ mStruct.Stiffener[1].assign_nomenclature(3, 'D')
 mStruct.Stiffener[2].assign_nomenclature(4, 'D')
 
 
-""" assign Structure to Vessel """
-mVess.assign_structure(mStruct)
+
 
 """ calculate pressure using ISO rules """
 mDes.calc_pressure_factors(mISO, mStruct, mVess) # objStruct.Panel[i].'pressure factors'
@@ -93,16 +151,18 @@ mStruct.Panel[2].assign_plate(mAL4)
 mStruct.Panel[3].assign_plate(mAL5)
 
 """ assign profile to specific stiffener """
-mStruct.Stiffener[0].assign_profile(FlatBar60x5)
-mStruct.Stiffener[1].assign_profile(FlatBar60x5)
-mStruct.Stiffener[2].assign_profile(FlatBar60x5)
+mStruct.Stiffener[0].assign_profile(mFlatBar60x5)
+mStruct.Stiffener[1].assign_profile(mFlatBar60x5)
+mStruct.Stiffener[2].assign_profile(mFlatBar60x5)
+
+""" calculate total weight """
+mStruct.calc_total_weight()
 
 print('calculations done')
 
     
 mRep = SP.Report()
-# (filename, objStruct, objDes=
-mRep.create_scantling_report('test', mStruct, mDes) # excel report created in same directory as schprog.py
+mRep.create_scantling_report('test', mStruct, mDes)
 print('report done')
 
 """ If you wanna view all the attributes of the panels or stiffeners """
@@ -116,4 +176,27 @@ print('report done')
 #    for attr, value in mStruct.Stiffener[i].__dict__.items():
 #        print(attr, "=", value)
 #    print("___________________________________")
-    
+
+""" OPTIMIZATION """
+""" initialize structure """
+mStruct2 = SP.Structure(mVess)
+""" assign Structure to Vessel """
+mVess.assign_structure(mStruct)
+""" initilize optimizer """
+mOpt = SP.Optimizer()
+""" provide list with extrusions to use in sweep method """
+extrusions = [mFlatBar60x5, mFlatBar61x5, mFlatBar62x6]
+""" provide list with machined profiles to use in sweep method """
+machined = mProfLib.list_all_machined()
+# (objVess, objStruct, objRule, objDes, objPlaLib,
+#  minNrStiff, maxNrStiff, panMat, stiffMat, extrusions)
+print('start optimization')
+sweep = mOpt.sweep_method(mVess, mStruct2, mISO, mDes, mPlaLib,
+                          0, 3, mAL_5083_O, mAL_6082_T6, extrusions,
+                          machined)
+print('sweep optimization done')
+mOpt.assign_sweep(sweep)
+mRep.create_optimization_report('Opti', mOpt)
+print('optimization report done')
+ 
+ 
