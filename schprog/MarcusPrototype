@@ -107,7 +107,7 @@ mProfLib.assign_machined(mFlatBar50x5)
 mDes.create_section(480, 845, 3.022)
 """ create panels and stiffeners from specified topology with equally spaces stiffeners """
 # (objStruct, nStiff, location)
-mDes.create_section_topology(mStruct, 3, 'bottom')
+mDes.create_section_topology(mStruct, 2, 'bottom')
 
 """ assign nomenclature to panels and stiffeners"""
 # (longiLoc, stiffID) # stiffID is which stiffeners is this panel attached to (longiLoc)
@@ -115,14 +115,9 @@ mDes.create_section_topology(mStruct, 3, 'bottom')
 mStruct.Panel[0].assign_nomenclature('D', 3)
 mStruct.Panel[1].assign_nomenclature('D', 4)
 mStruct.Panel[2].assign_nomenclature('D', 5)
-mStruct.Panel[3].assign_nomenclature('D', 6)
 # (longiLoc, panSpan) sLoc is location around vessel with respect to centreline
 mStruct.Stiffener[0].assign_nomenclature(2, 'D')
 mStruct.Stiffener[1].assign_nomenclature(3, 'D')
-mStruct.Stiffener[2].assign_nomenclature(4, 'D')
-
-
-
 
 """ calculate pressure using ISO rules """
 mDes.calc_pressure_factors(mISO, mStruct, mVess) # objStruct.Panel[i].'pressure factors'
@@ -144,16 +139,14 @@ mDes.calc_scantling_req(mISO, mStruct, mVess) # objStruct.Panel[i].'scantling re
                                               # [ruleType, k2, k3, FShear, MBend, tReq, tMin]
 
 """ assign recommended plate to all panels """
-#mDes.assign_recommended_plates(mStruct, mPlaLib) # objStruct.Panel[i].Plate
-mStruct.Panel[0].assign_plate(mAL3)
-mStruct.Panel[1].assign_plate(mAL3)
-mStruct.Panel[2].assign_plate(mAL4)
-mStruct.Panel[3].assign_plate(mAL5)
+mDes.assign_recommended_plates(mStruct, mPlaLib) # objStruct.Panel[i].Plate
+# if you want to assign a specifc plate to a specific panel.
+#mStruct.Panel[i].assign_plate(objPla)
+
 
 """ assign profile to specific stiffener """
 mStruct.Stiffener[0].assign_profile(mFlatBar60x5)
 mStruct.Stiffener[1].assign_profile(mFlatBar60x5)
-mStruct.Stiffener[2].assign_profile(mFlatBar60x5)
 
 """ calculate total weight """
 mStruct.calc_total_weight()
