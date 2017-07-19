@@ -131,6 +131,22 @@ class Structure:
                 kDC: Design category factor (float, 0-1 -)
             Output:
                 self.Input
+                
+            ...calc_total_weight...
+            Objective:
+                Calculates the total weight of the entire structure
+            Input:
+                -
+            Output:
+                self.weight: Total weight of all the structural components (float, kg)
+                
+            ...calc_CoG...
+            Objective:
+                Calculates the centre of gravity (CoG) of the entire structure
+            Input:
+                -
+            Output:
+                self.CoG: Centre of gravity of the entire structure (float, m)
     """
     def __init__(self, objVess):
         """ Inits the Structure object. """
@@ -158,6 +174,7 @@ class Structure:
         pass
     
     def calc_total_weight(self):
+        """ Calculates the total weight of the entire structure """
         panWeight = []
         stiffWeight = []
         for i in range(0, self.Panel.__len__()):
@@ -173,16 +190,37 @@ class Structure:
             stiffWeight = 0
         
         self.weight = panWeight + stiffWeight
-
-# TODO:
-    # Methods:
-        # Calculate CoG:
-            # Adds the mass and centre of gravity of every structural member, 
-            # ...then divide it by the total mass.
+        pass
     
-    # Output:
-        # Ship weight
-        # CoG
+    def calc_CoG(self):
+        """ Calculates the centre of gravity (CoG) of the entire structure """
+        panCoG = []
+        stiffCoG = []
+        for i in range(0, self.Panel.__len__()):
+            self.Panel[i].calc_weight()
+            panCoG = (panCoG + [[self.Panel[i].weight * self.Panel[i].xPos] +
+                      [self.Panel[i].weight * self.Panel[i].yPos*1e-3]]
+                      ) # TODO: add z-coordinate
+        panCoG = numpy.array(panCoG) # convert to array in order to use numpy methods
+        panCoG = panCoG.sum(axis=0) # sums all columns
+        
+        try:
+            for i in range(0, self.Stiffener.__len__()):
+                self.Stiffener[i].calc_weight()
+                stiffCoG = (stiffCoG + 
+                            [
+                             [self.Stiffener[i].weight * self.Stiffener[i].xPos] +
+                             [self.Stiffener[i].weight * self.Stiffener[i].yPos*1e-3]
+                             ]
+                            ) # TODO: add z-coordinate
+            stiffCoG = numpy.array(stiffCoG) # convert to array in order to use numpy methods
+            stiffCoG = stiffCoG.sum(axis=0) # sums all columns
+
+        except:
+            stiffCoG = 0
+        
+        self.CoG = (panCoG + stiffCoG) / self.weight
+        pass
 
 
 class Stiffener(Structure):
@@ -351,7 +389,6 @@ class Stiffener(Structure):
             # Assign ISO Values
             self.AwMin = inputVec[1]
             self.SMMin = inputVec[2]
-
         pass
 
     def assign_profile(self, objProf):
@@ -623,6 +660,7 @@ class MaterialsLibrary:
                self.density
                )
         pass
+            
 
 
 class PlatingLibrary:
@@ -787,14 +825,14 @@ class Extrusions(ProfileLibrary):
                 tw: Thickness of the web (float, mm)
                 hw: Height of the web (float, mm)
                 tf: Thickness of the flange (float, mm)
-                fw: Width of the flange (float, mm)
+                wf: Width of the flange (float, mm)
                 pType: Type of profile e.g. I-beam, L-beam, T-beam etc. (string)
             Output:
                 self.Input
                 self.Atot: Cross-section area of profile (float, mm2)
     """
     
-    def __init__(self, profLabel, SM, Aw, tw, hw, tf, fw, pType):
+    def __init__(self, profLabel, SM, Aw, tw, hw, tf, wf, pType):
         """ Inits the Extrusion objects for the profile library. """
         self.profLabel = profLabel
         self.SM = SM
@@ -802,8 +840,8 @@ class Extrusions(ProfileLibrary):
         self.tw = tw
         self.hw = hw
         self.tf = tf
-        self.fw = fw
-        self.Atot = (self.tw * self.hw) + (self.tf * self.fw)
+        self.wf = wf
+        self.Atot = (self.tw * self.hw) + (self.tf * self.wf)
         self.pType = pType
         pass
     
@@ -816,7 +854,7 @@ class Extrusions(ProfileLibrary):
         tw = %.1f (mm)
         hw = %.1f (mm)
         tf = %.1f (mm)
-        fw = %.1f (mm)
+        wf = %.1f (mm)
         Atot = %.2f (mm2)
         pType = %s
         """ % (self.profLabel,
@@ -825,7 +863,7 @@ class Extrusions(ProfileLibrary):
                self.tw,
                self.hw,
                self.tf,
-               self.fw,
+               self.wf,
                self.Atot,
                self.pType)
         pass
@@ -834,23 +872,43 @@ class Extrusions(ProfileLibrary):
 class Machined(ProfileLibrary):
     """ User defined machined profiles """
     
-    def __init__(self, profLabel, tw, hw, tf, fw, pType):
+    def __init__(self, profLabel, tw, hw, tf, wf, pType):
         """ Inits the Machined objects for the profile library. """
         self.profLabel = profLabel
         self.tw = tw
         self.hw = hw
         self.tf = tf
-        self.fw = fw
+        self.wf = wf
         self.pType = pType
+        self.Atot = (self.tw * self.hw) + (self.tf * self.wf)
         self.SM = self.calc_SM()
         self.Aw = (self.tw * self.hw)*1e-2 # cm2
-        self.Atot = (self.tw * self.hw) + (self.tf * self.fw)
         pass
     
     def calc_SM(self):
+        tw = self.tw*1e-1
+        hw = self.hw*1e-1
+        tf = self.tf*1e-1
+        wf = self.wf*1e-1
+        Atot = self.Atot*1e-2
         if self.pType == 'Flat Bar':
-            Ixx = (self.tw*1e-1 * (self.hw*1e-1)**3) / 12 
-            SM = Ixx/((self.hw*1e-1)/2)
+            ycog = hw/2
+            Ixx = (tw * hw**3) / 12 
+            SM = Ixx / ycog
+        elif self.pType == 'L-shaped':
+            Atot = tw * (wf + hw - tf)
+            ycog = (hw**2 + wf * tf - tw**2) / (2*(wf + hw - tw))
+            Ixx = (1/3)*(wf * hw**3 - (hw-tf) * (wf-tw)**3) - Atot * (hw - ycog)**2
+            SM = Ixx / ycog
+        elif self.pType == 'T-shaped':
+            ycog = (((hw + tf/2) * tf * wf + hw**2 * 
+                    tw/2) / Atot)
+            Ixx = (tw * hw * (ycog - hw/2)**2 + 
+                   (tw * hw**3)/12 + 
+                   tf * wf * (hw + tf/2 - ycog)**2 + 
+                   tf**3 * wf/12
+                   )
+            SM = Ixx / ycog
         return SM
         
         
@@ -863,7 +921,7 @@ class Machined(ProfileLibrary):
         tw = %.1f (mm)
         hw = %.1f (mm)
         tf = %.1f (mm)
-        fw = %.1f (mm)
+        wf = %.1f (mm)
         Atot = %.2f (mm2)
         pType = %s
         """ % (self.profLabel,
@@ -872,7 +930,7 @@ class Machined(ProfileLibrary):
                self.tw,
                self.hw,
                self.tf,
-               self.fw,
+               self.wf,
                self.Atot,
                self.pType)
         pass
@@ -1866,7 +1924,7 @@ class Report:
         uniqueItems = list(set(profiles))
         inputList5 = []
         for i in range(0, uniqueItems.__len__()):
-            assList5 = ([uniqueItems[i].profLabel] + [uniqueItems[i].fw]
+            assList5 = ([uniqueItems[i].profLabel] + [uniqueItems[i].wf]
                         + [uniqueItems[i].tf] + [uniqueItems[i].hw]
                         + [uniqueItems[i].tw] + [uniqueItems[i].pType]
                         )
@@ -1878,9 +1936,9 @@ class Report:
         
         if inputList5 != []:
             # Iterate over the data and write it out row by row.
-            for profLabel, fw, tf, hw, tw, pType in (inputList5):
+            for profLabel, wf, tf, hw, tw, pType in (inputList5):
                 worksheet2.write(row, col,     profLabel)
-                worksheet2.write(row, col + 1, fw, oneDec)
+                worksheet2.write(row, col + 1, wf, oneDec)
                 worksheet2.write(row, col + 2, tf, twoDec)
                 worksheet2.write(row, col + 3, hw, twoDec)
                 worksheet2.write(row, col + 4, tw, twoDec)
@@ -2849,7 +2907,7 @@ class Optimizer:
                     machWeights = machWeights + [weightMProf]
             else:
                 weightPan = [i, objStruct.Panel[0].Plate.tp, 
-                             'None','-','-','-','-','-','-', '-',
+                             'None','-','-','-','-','-','-','-',
                              panWeight,
                              self.objective_function(objStruct)]
                 extrWeights = extrWeights + [weightPan]
@@ -2865,6 +2923,36 @@ class Optimizer:
         self.sweep = objSweep
         pass
 
-    # User chooses optimization method
-    # User configures chosen method
-    # Run optimization
+class StressCalculator:
+    
+    def __init__(self):
+        pass
+    
+    def calc_stiff_stress(self, objStiff): # TODO: fix the units
+        tw = objStiff.Profile.tw
+        hw = objStiff.Profile.hw
+        tf = objStiff.Profile.tf
+        wf = objStiff.Profile.wf
+        Atot = objStiff.Profile.Atot
+        if objStiff.Profile.pType == 'Flat Bar':
+            ycog = hw/2
+            Ixx = (tw * hw**3) / 12 
+        elif objStiff.Profile.pType == 'L-shaped':
+            Atot = tw * (wf + hw - tf)
+            ycog = (hw**2 + wf * tf - tw**2) / (2*(wf + hw - tw))
+            Ixx = (1/3)*(wf * hw**3 - (hw-tf) * (wf-tw)**3) - Atot * (hw - ycog)**2
+        elif objStiff.Profile.pType == 'T-shaped':
+            ycog = (((hw + tf/2) * tf * wf + hw**2 * 
+                    tw/2) / Atot)
+            Ixx = (tw * hw * (ycog - hw/2)**2 + 
+                   (tw * hw**3)/12 + 
+                   tf * wf * (hw + tf/2 - ycog)**2 + 
+                   tf**3 * wf/12
+                   )
+        q = 0.023 #(objStiff.pMax*1e-6) / objStiff.sStiff
+        MMax = ((q * objStiff.lStiff**2) / 8)
+        zMax = ycog
+        sigma_stiff = (MMax * zMax / Ixx)
+        return sigma_stiff
+    
+    
