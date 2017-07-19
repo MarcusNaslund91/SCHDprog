@@ -5,7 +5,7 @@ Created on Wed Jun 14 08:30:14 2017
 
 @author: Marcus Naslund 
 """
-
+import Libraries as LB
 import schprog as SP
 
 """ initialize designer """
@@ -21,36 +21,7 @@ mStruct = SP.Structure(mVess)
 """ assign Structure to Vessel """
 mVess.assign_structure(mStruct)
 
-""" create materials """
-# (matLabel, yieldStrength, tensileStrength, elasticModulus, shearModulus, density)
-mAL_5083_O = SP.MaterialsLibrary('AL_5083_O', 125, 270, 7000, 2692, 2720)
-mAL_6082_T6 = SP.MaterialsLibrary('AL_6082_T6', 115, 170, 7000, 2692, 2830)
-
-""" create plates """
-mPlaLib = SP.PlatingLibrary()
-# (label, tp)
-mAL3 = SP.Plates('AL3', 3)
-mAL4 = SP.Plates('AL4', 4)
-mAL5 = SP.Plates('AL5', 5)
-mAL8 = SP.Plates('AL8', 8)
-mAL10 = SP.Plates('AL10', 10)
-mPlaLib.assign_plate(mAL3)
-mPlaLib.assign_plate(mAL4)
-mPlaLib.assign_plate(mAL5)
-mPlaLib.assign_plate(mAL8)
-mPlaLib.assign_plate(mAL10)
-
-""" create profiles """
-mProfLib = SP.ProfileLibrary()
-# (profLabel, SM, Aw, tw, hw, tf, fw, pType)
-mFlatBar60x5 = SP.Extrusions('Flat Bar 60 x 5', 6.179, 3.000, 5.0, 60, 0, 0, 'Flat Bar')
-mFlatBar61x5 = SP.Extrusions('Flat Bar 61 x 5', 6.170, 3.050, 5.0, 61, 0, 0, 'Flat Bar')
-mFlatBar62x6 = SP.Extrusions('Flat Bar 62 x 6', 8.824, 3.720, 6.0, 62, 0, 0, 'Flat Bar')
-
-mProfLib.assign_extrusion(mFlatBar60x5)
-mProfLib.assign_extrusion(mFlatBar61x5)
-mProfLib.assign_extrusion(mFlatBar62x6)
-
+""" create custom machined profiles """
 # (profLabel, tw, hw, tf, fw, pType)
 mFlatBar36x3 = SP.Machined('Flat Bar 36 x 3', 3.0, 36.0, 0, 0, 'Flat Bar')
 mFlatBar35x3 = SP.Machined('Flat Bar 35 x 3', 3.0, 35.0, 0, 0, 'Flat Bar')
@@ -69,37 +40,25 @@ mFlatBar59x5 = SP.Machined('Flat Bar 59 x 5', 5.0, 59.0, 0, 0, 'Flat Bar')
 mFlatBar58x5 = SP.Machined('Flat Bar 58 x 5', 5.0, 58.0, 0, 0, 'Flat Bar')
 mFlatBar57x5 = SP.Machined('Flat Bar 57 x 5', 5.0, 57.0, 0, 0, 'Flat Bar')
 mFlatBar56x5 = SP.Machined('Flat Bar 56 x 5', 5.0, 56.0, 0, 0, 'Flat Bar')
-mFlatBar55x5 = SP.Machined('Flat Bar 55 x 5', 5.0, 55.0, 0, 0, 'Flat Bar')
-mFlatBar54x5 = SP.Machined('Flat Bar 54 x 5', 5.0, 54.0, 0, 0, 'Flat Bar')
-mFlatBar53x5 = SP.Machined('Flat Bar 53 x 5', 5.0, 53.0, 0, 0, 'Flat Bar')
-mFlatBar52x5 = SP.Machined('Flat Bar 52 x 5', 5.0, 52.0, 0, 0, 'Flat Bar')
-mFlatBar51x5 = SP.Machined('Flat Bar 51 x 5', 5.0, 51.0, 0, 0, 'Flat Bar')
-mFlatBar50x5 = SP.Machined('Flat Bar 50 x 5', 5.0, 50.0, 0, 0, 'Flat Bar')
 
 
-mProfLib.assign_machined(mFlatBar36x3)
-mProfLib.assign_machined(mFlatBar35x3)
-mProfLib.assign_machined(mFlatBar34x3)
-mProfLib.assign_machined(mFlatBar33x3)
-mProfLib.assign_machined(mFlatBar32x3)
+LB.mProfLib.assign_machined(mFlatBar36x3)
+LB.mProfLib.assign_machined(mFlatBar35x3)
+LB.mProfLib.assign_machined(mFlatBar34x3)
+LB.mProfLib.assign_machined(mFlatBar33x3)
+LB.mProfLib.assign_machined(mFlatBar32x3)
 
-mProfLib.assign_machined(mFlatBar48x4)
-mProfLib.assign_machined(mFlatBar47x4)
-mProfLib.assign_machined(mFlatBar46x4)
-mProfLib.assign_machined(mFlatBar45x4)
-mProfLib.assign_machined(mFlatBar44x4)
+LB.mProfLib.assign_machined(mFlatBar48x4)
+LB.mProfLib.assign_machined(mFlatBar47x4)
+LB.mProfLib.assign_machined(mFlatBar46x4)
+LB.mProfLib.assign_machined(mFlatBar45x4)
+LB.mProfLib.assign_machined(mFlatBar44x4)
 
-mProfLib.assign_machined(mFlatBar60x5)
-mProfLib.assign_machined(mFlatBar59x5)
-mProfLib.assign_machined(mFlatBar58x5)
-mProfLib.assign_machined(mFlatBar57x5)
-mProfLib.assign_machined(mFlatBar56x5)
-mProfLib.assign_machined(mFlatBar55x5)
-mProfLib.assign_machined(mFlatBar54x5)
-mProfLib.assign_machined(mFlatBar53x5)
-mProfLib.assign_machined(mFlatBar52x5)
-mProfLib.assign_machined(mFlatBar51x5)
-mProfLib.assign_machined(mFlatBar50x5)
+LB.mProfLib.assign_machined(mFlatBar60x5)
+LB.mProfLib.assign_machined(mFlatBar59x5)
+LB.mProfLib.assign_machined(mFlatBar58x5)
+LB.mProfLib.assign_machined(mFlatBar57x5)
+LB.mProfLib.assign_machined(mFlatBar56x5)
 
 
 """ create a section (stiffened panel between two girder ans two frames) """
@@ -128,32 +87,34 @@ mDes.calc_design_pressures(mISO, mStruct, mVess) # objStruct.Panel[i].'scantling
 """ if you wanna assign material to a specific panel """
 #mStruct.Panel[i].assign_material(mAL_5083_O) # mStruct.Panel[i].Material
 """ if you wanna assign the same material to all panels """
-mDes.assign_material_to_all_panels(mStruct, mAL_5083_O) # mStruct.Panel[i].Material
+mDes.assign_material_to_all_panels(mStruct, LB.mAL_5083_O) # mStruct.Panel[i].Material
 """ if you wanna assign material to a specific stiffener """
-#mStruct.Stiffener[i].assign_material(mAL_6082_T6) # mStruct.Stiffener[i].Material
+#mStruct.Stiffener[i].assign_material(mAL_6082_T6_5) # mStruct.Stiffener[i].Material
 """  if you wanna assign the same material to all stiffeners """
-mDes.assign_material_to_all_stiffeners(mStruct, mAL_6082_T6)
+mDes.assign_material_to_all_stiffeners(mStruct, LB.mAL_6082_T6_5)
 
 """ calculate scantling requirement """
 mDes.calc_scantling_req(mISO, mStruct, mVess) # objStruct.Panel[i].'scantling requirements'
                                               # [ruleType, k2, k3, FShear, MBend, tReq, tMin]
 
 """ assign recommended plate to all panels """
-mDes.assign_recommended_plates(mStruct, mPlaLib) # objStruct.Panel[i].Plate
+mDes.assign_recommended_plates(mStruct, LB.mPlaLib) # objStruct.Panel[i].Plate
 # if you want to assign a specifc plate to a specific panel.
 #mStruct.Panel[i].assign_plate(objPla)
 
-
 """ assign profile to specific stiffener """
-mStruct.Stiffener[0].assign_profile(mFlatBar60x5)
-mStruct.Stiffener[1].assign_profile(mFlatBar60x5)
+mStruct.Stiffener[0].assign_profile(LB.mFlatBar60x5)
+mStruct.Stiffener[1].assign_profile(LB.mFlatBar60x5)
+
+""" Calculate actual stress of stiffeners """
+mStress = SP.StressCalculator()
+print("actual stress of stiffener 0 = ", mStress.calc_stiff_stress(mStruct.Stiffener[0]))
 
 """ calculate total weight """
 mStruct.calc_total_weight()
 
 print('calculations done')
 
-    
 mRep = SP.Report()
 mRep.create_scantling_report('test', mStruct, mDes)
 print('report done')
@@ -178,14 +139,14 @@ mVess.assign_structure(mStruct)
 """ initilize optimizer """
 mOpt = SP.Optimizer()
 """ provide list with extrusions to use in sweep method """
-extrusions = [mFlatBar60x5, mFlatBar61x5, mFlatBar62x6]
+extrusions = [LB.mFlatBar40x5, LB.mFlatBar40x6, LB.mTee40x40x4]
 """ provide list with machined profiles to use in sweep method """
-machined = mProfLib.list_all_machined()
+machined = LB.mProfLib.list_all_machined()
 # (objVess, objStruct, objRule, objDes, objPlaLib,
 #  minNrStiff, maxNrStiff, panMat, stiffMat, extrusions)
 print('start optimization')
-sweep = mOpt.sweep_method(mVess, mStruct2, mISO, mDes, mPlaLib,
-                          0, 3, mAL_5083_O, mAL_6082_T6, extrusions,
+sweep = mOpt.sweep_method(mVess, mStruct2, mISO, mDes, LB.mPlaLib,
+                          0, 3, LB.mAL_5083_O, LB.mAL_6082_T6_5, extrusions,
                           machined)
 print('sweep optimization done')
 mOpt.assign_sweep(sweep)
