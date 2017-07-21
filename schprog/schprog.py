@@ -66,8 +66,8 @@ class Vessel:
         self.bC = bC
         self.mLDC = mLDC
         self.beta04 = beta04  # range 10 - 30 degrees
-        self.hT = hT
-        self.tC = tC
+        self.hT = hT # TODO: to be used in calculation for bottom and side configuration.
+        self.tC = tC # not use din code yet.
         self.V = V
         pass
         # TODO: add variable check
@@ -1045,7 +1045,7 @@ class ISO12215(Rules):
                 AD: Design area under consideration (float, m2)
                 kZ: Vertical pressure distribution factor (0-1, -)
                 
-            ...getpressure_factors...
+            ...get_press_factors...
             Objective:
                 Collects the data for pressure factors from the structure and 
                 panel/stiffener objects, to be used as input for the rules.
@@ -1256,10 +1256,10 @@ class ISO12215(Rules):
         # Z is the height from the fully loaded waterline to the top of the deck
         # h is the height above from the fully loaded waterline to the middle/centre 
         # of the plate/stiffener.
-        Z = 4.14 # meters
-        h = 0.033 # meters
-        kZ = (Z - h) / Z
-        #kZ = 0.676  # TODO: calculate kZ dynamically
+        #Z = 4.14 # meters
+        #h = 0.033 # meters
+        #kZ = (Z - h) / Z
+        kZ = 1  # TODO: calculate kZ dynamically
 
         PressFact = ['ISO', kL, kAR_d, kAR_p, AD, kZ]
 
@@ -1356,7 +1356,7 @@ class ISO12215(Rules):
         
         return PressFact
 
-    def getpressure_factors(self, objStruct, objComp):
+    def get_press_factors(self, objStruct, objComp):
         """ Collects the data for pressure factors from the structure and 
             panel/stiffener objects, to be used as input for the rules.
         """
@@ -1372,7 +1372,8 @@ class ISO12215(Rules):
         
         """ MOTOR CRAFT DESIGN PRESSURE, SECTION 8.1 """
         [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC] = inputVec
-
+        
+        # TODO: pBase could be moved to the global calculations
         pBBase_d = 2.4*mLDC**0.33 + 20  # displacement mode
         pBBase_p = (0.1*mLDC/(LWL * bC)) * (1 + kDC**0.5 * nCG)  # planing mode
 
@@ -1428,7 +1429,8 @@ class ISO12215(Rules):
         
         """ MOTOR CRAFT DESIGN PRESSURE, SECTION 8.1 """
         [kDC, kL, kAR_d, kAR_p, kZ, location, nCG, LWL, bC, mLDC] = inputVec
-
+        
+        # TODO: pBase could be moved to the global calculations
         pBBase_d = 2.4*mLDC**0.33 + 20  # kN/m2
         pBBase_p = (0.1*mLDC/(LWL * bC)) * (1 + kDC**0.5 * nCG)  # kN/m2
         
@@ -1573,7 +1575,7 @@ class ISO12215(Rules):
         
         """ ADJUSTMENT FACTORS, SECITON 11.2 """
         """ Curvature factor kCS, section 11.2.1. """
-        kCS = 1 # TODO: This is for non-curavture, add rules later!
+        kCS = 1 # TODO: This is for non-curvature, add rules later!
         
         """ Stiffener shear area factor """
         
@@ -1651,7 +1653,6 @@ class ISO12215(Rules):
         
 # TODO:
     # Methods:
-        # Calculate minimal structural requirements for each member
         # Check maximum proportions between dimensions within a stiffener
 
     # Output:
@@ -1702,6 +1703,9 @@ class Report:
         # Add a bold format with a bottom border for table titles.
         tabletitle = workbook.add_format({'bold': True, 'bottom': True, 
                                           'align': 'center', 'valign': 'vcenter',})
+        # Add colour formats to use for highlighting
+        red = workbook.add_format({'bg_color': '#E74C3C'})
+        yellow = workbook.add_format({'bg_color': '#F7DC6F'})
         
         # Add numerical formats
         oneDec = workbook.add_format() 
@@ -1721,8 +1725,6 @@ class Report:
         worksheet1.set_column('D:D', 19)
         worksheet1.set_column('E:E', 19.5)
         worksheet1.set_column('F:F', 19.5)
-        
-        # TODO: add format for ratios that are less than 1.06
         
         """ Panel topology """
         # Write some data headers for panel data
@@ -1757,6 +1759,8 @@ class Report:
             worksheet1.write(row, col + 4, xPos, threeDec)
             worksheet1.write(row, col + 5, desPress, oneDec)
             row += 1
+        
+        row_e = row + 3
         
         """ Panel requirements """
         # Write some data headers for panel results
@@ -1797,6 +1801,21 @@ class Report:
             worksheet1.write(row, col + 4, tRat, threeDec)
             worksheet1.write(row, col + 5, tMinRat, threeDec)
             row += 1
+        
+        rowlenEF = 'E%d:F%d' % (row_e, row)
+        rowlenFG = 'F%d:G%d' % (row_e, row) 
+
+        
+        # Write a conditional format over a range.
+        worksheet1.conditional_format(rowlenEF, {'type': 'cell',
+                                              'criteria': '<',
+                                              'value': 1.0,
+                                              'format': red})
+        worksheet1.conditional_format(rowlenEF, {'type': 'cell',
+                                              'criteria': 'between',
+                                              'minimum':  1.0,
+                                              'maximum':  1.06,
+                                              'format': yellow})
         
         """ Stiffener topology """
         # Write some data headers for stiffener data
@@ -1842,6 +1861,8 @@ class Report:
             row = row + 3
             col = 0
             worksheet1.write(row, col,     inputList3)
+            
+        row_e = row + 3
             
             
         """ Stiffener requirements """
@@ -1897,6 +1918,19 @@ class Report:
             col = 0
             # Write data
             worksheet1.write(row, col, 'None')
+            
+        rowlenFG = 'F%d:G%d' % (row_e, row) 
+        
+        # Write a conditional format over a range.
+        worksheet1.conditional_format(rowlenFG, {'type': 'cell',
+                                              'criteria': '<',
+                                              'value': 1.0,
+                                              'format': red})
+        worksheet1.conditional_format(rowlenFG, {'type': 'cell',
+                                              'criteria': 'between',
+                                              'minimum':  1.0,
+                                              'maximum':  1.06,
+                                              'format': yellow})
         
         """____________________WORKSHEET 2_______________________"""
         """ Used Profiles """
@@ -2003,7 +2037,7 @@ class Report:
             # Start from the first cell below the headers.
             row = 1
             col = 0
-            # Write data
+            # Write 'none' if there are no stiffeners
             worksheet3.write(row, col, 'None')
             
         """     Panels """
@@ -2249,27 +2283,27 @@ class Report:
         worksheet1.set_column('K:K', 5.9)
         worksheet1.set_column('L:L', 5.9)
         
-        # TODO: add format for ratios that are less than 1.06
-        
         """ Extrusions """
         # Write some data headers for optimization data
-        worksheet1.merge_range('A1:L1', 'Extruded Profiles', tabletitle)
-        worksheet1.merge_range('A2:C2', 'Input Data', tabletitle)
+        worksheet1.merge_range('A1:N1', 'Extruded Profiles', tabletitle)
+        worksheet1.merge_range('A2:E2', 'Input Data', tabletitle)
         worksheet1.write('A3', 'Number of Stiffeners', bold)
-        worksheet1.write('B3', 'Plating Thickness (mm)', bold)
-        worksheet1.write('C3', 'Profile (mm)', bold)
-        worksheet1.merge_range('D2:E2', 'Offered', tabletitle)
-        worksheet1.write('D3', 'SM (cm3)', bold)
-        worksheet1.write('E3', 'Aw (cm2)', bold)
-        worksheet1.merge_range('F2:G2', 'Required', tabletitle)
-        worksheet1.write('F3', 'SM Min (cm3)', bold)
-        worksheet1.write('G3', 'Aw Min (cm2)', bold)
-        worksheet1.merge_range('H2:L2', 'Results', tabletitle)
-        worksheet1.write('H3', 'SM ratio', bold)
-        worksheet1.write('I3', 'Aw Ratio', bold)
-        worksheet1.write('J3', 'Stiffener Weight (kg)', bold)
-        worksheet1.write('K3', 'Plating Weight (kg)', bold)
-        worksheet1.write('L3', 'Total Weight (kg)', bold)
+        worksheet1.write('B3', 'Plating Material', bold)
+        worksheet1.write('C3', 'Profile Material', bold)
+        worksheet1.write('D3', 'Plating Thickness (mm)', bold)
+        worksheet1.write('E3', 'Profile (mm)', bold)
+        worksheet1.merge_range('F2:G2', 'Offered', tabletitle)
+        worksheet1.write('F3', 'SM (cm3)', bold)
+        worksheet1.write('G3', 'Aw (cm2)', bold)
+        worksheet1.merge_range('H2:I2', 'Required', tabletitle)
+        worksheet1.write('H3', 'SM Min (cm3)', bold)
+        worksheet1.write('I3', 'Aw Min (cm2)', bold)
+        worksheet1.merge_range('J2:N2', 'Results', tabletitle)
+        worksheet1.write('J3', 'SM ratio', bold)
+        worksheet1.write('K3', 'Aw Ratio', bold)
+        worksheet1.write('L3', 'Stiffener Weight (kg)', bold)
+        worksheet1.write('M3', 'Plating Weight (kg)', bold)
+        worksheet1.write('N3', 'Total Weight (kg)', bold)
         
         # optimization data we want to write to the worksheet.
         inputList = objOpt.sweep[0]
@@ -2280,20 +2314,22 @@ class Report:
         col = 0
 
         # Iterate over the data and write it out row by row.
-        for (nStiff, tp, profile, SM, Aw, SMMin, AwMin, SMRat, AwRat, platWeight,
-             stiffWeight, totWeight) in (inputList):
+        for (nStiff, panMat, stiffMat, tp, profile, SM, Aw, SMMin, AwMin, SMRat, 
+             AwRat, platWeight, stiffWeight, totWeight) in (inputList):
             worksheet1.write(row, col,     nStiff)
-            worksheet1.write(row, col + 1, tp)
-            worksheet1.write(row, col + 2, profile)
-            worksheet1.write(row, col + 3, SM, threeDec)
-            worksheet1.write(row, col + 4, Aw, threeDec)
-            worksheet1.write(row, col + 5, SMMin, threeDec)
-            worksheet1.write(row, col + 6, AwMin, threeDec)
-            worksheet1.write(row, col + 7, SMRat, threeDec)
-            worksheet1.write(row, col + 8, AwRat, threeDec)
-            worksheet1.write(row, col + 9, platWeight, twoDec)
-            worksheet1.write(row, col + 10, stiffWeight, twoDec)
-            worksheet1.write(row, col + 11, totWeight, twoDec)
+            worksheet1.write(row, col + 1, panMat)
+            worksheet1.write(row, col + 2, stiffMat)
+            worksheet1.write(row, col + 3, tp)
+            worksheet1.write(row, col + 4, profile)
+            worksheet1.write(row, col + 5, SM, threeDec)
+            worksheet1.write(row, col + 6, Aw, threeDec)
+            worksheet1.write(row, col + 7, SMMin, threeDec)
+            worksheet1.write(row, col + 8, AwMin, threeDec)
+            worksheet1.write(row, col + 9, SMRat, threeDec)
+            worksheet1.write(row, col + 10, AwRat, threeDec)
+            worksheet1.write(row, col + 11, platWeight, twoDec)
+            worksheet1.write(row, col + 12, stiffWeight, twoDec)
+            worksheet1.write(row, col + 13, totWeight, twoDec)
             row += 1
         
         row_e = row + 4 # used in formatting for machined
@@ -2303,66 +2339,96 @@ class Report:
         red = workbook.add_format({'bg_color': '#E74C3C'})
         yellow = workbook.add_format({'bg_color': '#F7DC6F'})
         green = workbook.add_format({'bg_color': '#82E0AA'})
-        rowlenH = 'H3:H%d' % row
-        rowlenI = 'I3:I%d' % row
-        rowlenL = 'L3:L%d' % row
-        formulaMin = '=L3=MIN(IF(H$3:H$%d>1,L$3:L$%d))' % (row, row)
+
+        
+        secMs = []
+        for i in range(0, objOpt.sweep[0].__len__()):
+            if objOpt.sweep[0][i][9] > 1:
+                secMs = secMs + [[i] + [objOpt.sweep[0][i][9]] + [objOpt.sweep[0][i][-1]]]
+            else:
+                pass
+        
+        allW = []
+        for j in range(0, secMs.__len__()):
+            allW = allW + [secMs[j][-1]]
+        minw = min(allW) 
+        indices = [ind for ind, val in enumerate(allW) if val == minw]
+        
+        minWs = []
+        for k in indices:
+            minWs = minWs + [secMs[k][0]]
+        
+        for ind in range(0, minWs.__len__()):
+            rowmin = minWs[ind] + 4
+            cellMin = 'N$%d' % rowmin
+            worksheet1.conditional_format(cellMin, {'type': 'cell',
+                                                    'criteria': '==',
+                                                    'value': cellMin,
+                                                    'format': green})
+
+
+        # TODO: it only checks the SM ratio now, add Aw ratio later.
         
         # Write a conditional format over a range.
-        worksheet1.conditional_format(rowlenH, {'type': 'cell',
+        rowlenJ = 'J4:J%d' % row # SM ratio
+        rowlenK = 'K4:K%d' % row # Aw ratio
+        
+        worksheet1.conditional_format(rowlenJ, {'type': 'cell',
                                               'criteria': '<',
                                               'value': 1,
                                               'format': red})
-        worksheet1.conditional_format(rowlenI, {'type': 'cell',
+        worksheet1.conditional_format(rowlenK, {'type': 'cell',
                                               'criteria': '<',
                                               'value': 1,
                                               'format': red})
-        worksheet1.conditional_format(rowlenH, {'type': 'cell',
+        worksheet1.conditional_format(rowlenJ, {'type': 'cell',
                                               'criteria': 'between',
                                               'minimum':  1,
                                               'maximum':  1.15,
                                               'format': yellow})
-        worksheet1.conditional_format(rowlenL, {'type': 'formula',
-                                              'criteria': formulaMin,
-                                              'format': green})
+
         """ Machined """
         # Write some data headers for optimization data
-        TT = 'A%d:L%d' % (row+2, row+2)
-        T1 = 'A%d:C%d' % (row+3, row+3)
+        TT = 'A%d:N%d' % (row+2, row+2)
+        T1 = 'A%d:E%d' % (row+3, row+3)
         H1 = 'A%d' % (row + 4)
         H2 = 'B%d' % (row + 4)
         H3 = 'C%d' % (row + 4)
-        T2 = 'D%d:E%d' % (row+3, row+3)
         H4 = 'D%d' % (row + 4)
         H5 = 'E%d' % (row + 4)
-        T3 = 'F%d:G%d' % (row+3, row+3)
+        T2 = 'F%d:G%d' % (row+3, row+3)
         H6 = 'F%d' % (row + 4)
         H7 = 'G%d' % (row + 4)
-        T4 = 'H%d:L%d' % (row+3, row+3)
+        T3 = 'H%d:I%d' % (row+3, row+3)
         H8 = 'H%d' % (row + 4)
         H9 = 'I%d' % (row + 4)
+        T4 = 'J%d:N%d' % (row+3, row+3)
         H10 = 'J%d' % (row + 4)
         H11 = 'K%d' % (row + 4)
         H12 = 'L%d' % (row + 4)
+        H13 = 'M%d' % (row + 4)
+        H14 = 'N%d' % (row + 4)
 
         
         worksheet1.merge_range(TT, 'Machined Profiles', tabletitle)
         worksheet1.merge_range(T1, 'Input Data', tabletitle)
         worksheet1.write(H1, 'Number of Stiffeners', bold)
-        worksheet1.write(H2, 'Plating Thickness (mm)', bold)
-        worksheet1.write(H3, 'Profile (mm)', bold)
+        worksheet1.write(H2, 'Plating Material', bold)
+        worksheet1.write(H3, 'Profile Material', bold)
+        worksheet1.write(H4, 'Plating Thickness (mm)', bold)
+        worksheet1.write(H5, 'Profile (mm)', bold)
         worksheet1.merge_range(T2, 'Offered', tabletitle)
-        worksheet1.write(H4, 'SM (cm3)', bold)
-        worksheet1.write(H5, 'Aw (cm2)', bold)
+        worksheet1.write(H6, 'SM (cm3)', bold)
+        worksheet1.write(H7, 'Aw (cm2)', bold)
         worksheet1.merge_range(T3, 'Required', tabletitle)
-        worksheet1.write(H6, 'SM Min (cm3)', bold)
-        worksheet1.write(H7, 'Aw Min (cm2)', bold)
+        worksheet1.write(H8, 'SM Min (cm3)', bold)
+        worksheet1.write(H9, 'Aw Min (cm2)', bold)
         worksheet1.merge_range(T4, 'Results', tabletitle)
-        worksheet1.write(H8, 'SM ratio', bold)
-        worksheet1.write(H9, 'Aw Ratio', bold)
-        worksheet1.write(H10, 'Stiffener Weight (kg)', bold)
-        worksheet1.write(H11, 'Plating Weight (kg)', bold)
-        worksheet1.write(H12, 'Total Weight (kg)', bold)
+        worksheet1.write(H10, 'SM ratio', bold)
+        worksheet1.write(H11, 'Aw Ratio', bold)
+        worksheet1.write(H12, 'Stiffener Weight (kg)', bold)
+        worksheet1.write(H13, 'Plating Weight (kg)', bold)
+        worksheet1.write(H14, 'Total Weight (kg)', bold)
         
         # optimization data we want to write to the worksheet.
         inputList = objOpt.sweep[1]
@@ -2372,45 +2438,70 @@ class Report:
         col = 0
 
         # Iterate over the data and write it out row by row.
-        for (nStiff, tp, profile, SM, Aw, SMMin, AwMin, SMRat, AwRat, platWeight,
-             stiffWeight, totWeight) in (inputList):
+        for (nStiff, panMat, stiffMat, tp, profile, SM, Aw, SMMin, AwMin, SMRat, 
+             AwRat, platWeight, stiffWeight, totWeight) in (inputList):
             worksheet1.write(row, col,     nStiff)
-            worksheet1.write(row, col + 1, tp)
-            worksheet1.write(row, col + 2, profile)
-            worksheet1.write(row, col + 3, SM, threeDec)
-            worksheet1.write(row, col + 4, Aw, threeDec)
-            worksheet1.write(row, col + 5, SMMin, threeDec)
-            worksheet1.write(row, col + 6, AwMin, threeDec)
-            worksheet1.write(row, col + 7, SMRat, threeDec)
-            worksheet1.write(row, col + 8, AwRat, threeDec)
-            worksheet1.write(row, col + 9, platWeight, twoDec)
-            worksheet1.write(row, col + 10, stiffWeight, twoDec)
-            worksheet1.write(row, col + 11, totWeight, twoDec)
+            worksheet1.write(row, col + 1, panMat)
+            worksheet1.write(row, col + 2, stiffMat)
+            worksheet1.write(row, col + 3, tp)
+            worksheet1.write(row, col + 4, profile)
+            worksheet1.write(row, col + 5, SM, threeDec)
+            worksheet1.write(row, col + 6, Aw, threeDec)
+            worksheet1.write(row, col + 7, SMMin, threeDec)
+            worksheet1.write(row, col + 8, AwMin, threeDec)
+            worksheet1.write(row, col + 9, SMRat, threeDec)
+            worksheet1.write(row, col + 10, AwRat, threeDec)
+            worksheet1.write(row, col + 11, platWeight, twoDec)
+            worksheet1.write(row, col + 12, stiffWeight, twoDec)
+            worksheet1.write(row, col + 13, totWeight, twoDec)
             row += 1
             
-        rowlenH = 'H%d:H%d' % (row_e, row)
-        rowlenI = 'I%d:I%d' % (row_e, row) 
-        rowlenL = 'L%d:L%d' % (row_e, row)
-        formulaMin = '=L%d=MIN(IF(H$%d:H$%d>1,L$%d:L$%d))' % (row_e, row_e, row, row_e, row)
+
+        
+        secMs2 = []
+        for i in range(0, objOpt.sweep[1].__len__()):
+            if objOpt.sweep[1][i][9] > 1:
+                secMs2 = secMs2 + [[i] + [objOpt.sweep[1][i][9]] + [objOpt.sweep[1][i][-1]]]
+            else:
+                pass
+        
+        allW2 = []
+        for j in range(0, secMs2.__len__()):
+            allW2 = allW2 + [secMs2[j][-1]]
+        minw2 = min(allW2) 
+        indices2 = [ind for ind, val in enumerate(allW2) if val == minw2]
+        
+        minWs2 = []
+        for k in indices2:
+            minWs2 = minWs2 + [secMs2[k][0]]
+        
+        for ind in range(0, minWs2.__len__()):
+            rowmin2 = minWs2[ind] + row_e + 1
+            cellMin2 = 'N$%d' % rowmin2
+            worksheet1.conditional_format(cellMin2, {'type': 'cell',
+                                                    'criteria': '==',
+                                                    'value': cellMin2,
+                                                    'format': green})
+        # TODO: This only checks the SM ratio, add Aw ratio later.
         
         # Write a conditional format over a range.
-        worksheet1.conditional_format(rowlenH, {'type': 'cell',
+        rowlenJ = 'J%d:J%d' % (row_e, row) # SM ratio
+        rowlenK = 'K%d:K%d' % (row_e, row) # Aw ratio
+        
+        worksheet1.conditional_format(rowlenJ, {'type': 'cell',
                                               'criteria': '<',
                                               'value': 1,
                                               'format': red})
-        worksheet1.conditional_format(rowlenI, {'type': 'cell',
+        worksheet1.conditional_format(rowlenK, {'type': 'cell',
                                               'criteria': '<',
                                               'value': 1,
                                               'format': red})
-        worksheet1.conditional_format(rowlenH, {'type': 'cell',
+        worksheet1.conditional_format(rowlenJ, {'type': 'cell',
                                               'criteria': 'between',
                                               'minimum':  1,
                                               'maximum':  1.15,
                                               'format': yellow})
-        worksheet1.conditional_format(rowlenL, {'type': 'formula',
-                                              'criteria': formulaMin,
-                                              'format': green})
-    
+
 #     Create graphs, messages, spreadsheets and all calculation outputs.
 #        
 #     Methods:
@@ -2621,7 +2712,7 @@ class Designer:
             PanData = objRule.measure_panel(objStruct.Panel[i])
 
             InData = PanData + [objStruct.mLDC] + [objStruct.nCG] + [VessData[0]]
-            # TODO: there might be a more stable way to do this.
+
 
             PressFac = objRule.calc_panel_pressure_factors(InData)
 
@@ -2650,12 +2741,11 @@ class Designer:
 
         for i in range(0, objStruct.Panel.__len__()):
             """ Panel design pressures """
-            PressFact = objRule.getpressure_factors(objStruct, objStruct.Panel[i])
+            PressFact = objRule.get_press_factors(objStruct, objStruct.Panel[i])
 
             PanData = objRule.measure_panel(objStruct.Panel[i])
 
             InData = PressFact + [PanData[4]] + [objStruct.nCG] + VessData[:3]
-            # TODO: there might be a more stable way to do this.
 
             DesPress = objRule.calc_panel_pressures(InData)
 
@@ -2664,12 +2754,11 @@ class Designer:
             
         for i in range(0, objStruct.Stiffener.__len__()):
             """ Stiffener design pressures """
-            PressFact = objRule.getpressure_factors(objStruct, objStruct.Stiffener[i])
+            PressFact = objRule.get_press_factors(objStruct, objStruct.Stiffener[i])
 
             StiffData = objRule.measure_stiffener(objStruct.Stiffener[i])
 
             InData = PressFact + [StiffData[5]] + [objStruct.nCG] + VessData[:3]
-            # TODO: there might be a more stable way to do this.
 
             DesPress = objRule.calc_stiffener_pressures(InData)
 
@@ -2693,8 +2782,10 @@ class Designer:
                       [VessData[4]] +
                       [objStruct.Panel[i].Material.tensileStrength] +
                       [objStruct.Panel[i].Material.yieldStrength] +
-                      [objStruct.Panel[i].Material.yieldStrength]
-                      )  # TODO: there might be a more stable way to do this.
+                      [objStruct.Panel[i].Material.yieldStrength] ###
+                      )
+            ### TODO: welded and non-welded should be used but that data does not exist yet.
+
 
             PanReq = objRule.calc_panel_req(InData)
 
@@ -2709,7 +2800,7 @@ class Designer:
 
             InData = (DesPress + [StiffData[0]] + [StiffData[4]] +
                       [objStruct.Stiffener[i].Material.yieldStrength]
-                      )  # TODO: there might be a more stable way to do this.
+                      )
 
             StiffReq = objRule.calc_stiff_req(InData)
 
@@ -2848,73 +2939,80 @@ class Optimizer:
         machWeights = [] # total weight using machined profiles
         for i in range(minNrStiff, maxNrStiff+1):
             objDes.create_section_topology(objStruct, i, 'bottom')
-            objDes.assign_material_to_all_panels(objStruct, panMat)
-            objDes.assign_material_to_all_stiffeners(objStruct, stiffMat)
             
-            objDes.calc_pressure_factors(objRule, objStruct, objVess)
-            objDes.calc_design_pressures(objRule, objStruct, objVess)
-            objDes.calc_scantling_req(objRule, objStruct, objVess)
-            
-            objDes.assign_recommended_plates(objStruct, objPlaLib)
-            
-            panWeight = []
-            for p in range(0, objStruct.Panel.__len__()):
-                objStruct.Panel[p].calc_weight()
-                panWeight = panWeight + [objStruct.Panel[p].weight]
-            panWeight = sum(panWeight)
-            
-            if i != 0: # if the numbers of stiffeners is not zero.
-                for profiles in extrusions:
+            for pm in panMat:
+                objDes.assign_material_to_all_panels(objStruct, pm)
+                for sm in stiffMat:
+                    objDes.assign_material_to_all_stiffeners(objStruct, sm)
                     
-                    stiffWeight = []
-                    for j in range(0, objStruct.Stiffener.__len__()):
-                        objStruct.Stiffener[j].assign_profile(profiles)
-                        objStruct.Stiffener[j].calc_weight()
-                        stiffWeight = stiffWeight + [objStruct.Stiffener[j].weight]
-                    stiffWeight = sum(stiffWeight)
+                    objDes.calc_pressure_factors(objRule, objStruct, objVess)
+                    objDes.calc_design_pressures(objRule, objStruct, objVess)
+                    objDes.calc_scantling_req(objRule, objStruct, objVess)
                     
-                    ratSM = profiles.SM/objStruct.Stiffener[0].SMMin
-                    ratAw = profiles.Aw/objStruct.Stiffener[0].AwMin
-                    weightEProf = [i, objStruct.Panel[0].Plate.tp,
-                                   profiles.profLabel, profiles.SM, profiles.Aw,
-                                   objStruct.Stiffener[0].SMMin, 
-                                   objStruct.Stiffener[0].AwMin,
-                                   ratSM, ratAw, 
-                                   stiffWeight, panWeight, 
-                                   self.objective_function(objStruct)]
+                    objDes.assign_recommended_plates(objStruct, objPlaLib)
+                
+                    panWeight = []
+                    for p in range(0, objStruct.Panel.__len__()):
+                        objStruct.Panel[p].calc_weight()
+                        panWeight = panWeight + [objStruct.Panel[p].weight]
+                    panWeight = sum(panWeight)
                     
-                    extrWeights = extrWeights + [weightEProf]
-                    
-                for profiles in machined:
-                    
-                    stiffWeight = []
-                    for k in range(0, objStruct.Stiffener.__len__()):
-                        objStruct.Stiffener[k].assign_profile(profiles)
-                        objStruct.Stiffener[k].calc_weight()
-                        stiffWeight = stiffWeight + [objStruct.Stiffener[k].weight]
-                    stiffWeight = sum(stiffWeight)
-                    
-                    ratSM = profiles.SM/objStruct.Stiffener[0].SMMin
-                    ratAw = profiles.Aw/objStruct.Stiffener[0].AwMin
-                    
-                    weightMProf = [i, objStruct.Panel[0].Plate.tp,
-                                   profiles.profLabel, profiles.SM, profiles.Aw,
-                                   objStruct.Stiffener[0].SMMin, 
-                                   objStruct.Stiffener[0].AwMin,
-                                   ratSM, ratAw, 
-                                   stiffWeight, panWeight,
-                                   self.objective_function(objStruct)]
-                    machWeights = machWeights + [weightMProf]
-            else:
-                weightPan = [i, objStruct.Panel[0].Plate.tp, 
-                             'None','-','-','-','-','-','-','-',
-                             panWeight,
-                             self.objective_function(objStruct)]
-                extrWeights = extrWeights + [weightPan]
-                machWeights= machWeights + [weightPan]
-            
-            
-            # TODO: add constraints?
+                    if i != 0: # if the numbers of stiffeners is not zero.
+                        for profiles in extrusions:
+                            
+                            stiffWeight = []
+                            for j in range(0, objStruct.Stiffener.__len__()):
+                                objStruct.Stiffener[j].assign_profile(profiles)
+                                objStruct.Stiffener[j].calc_weight()
+                                stiffWeight = stiffWeight + [objStruct.Stiffener[j].weight]
+                            stiffWeight = sum(stiffWeight)
+                            
+                            ratSM = profiles.SM/objStruct.Stiffener[0].SMMin
+                            ratAw = profiles.Aw/objStruct.Stiffener[0].AwMin
+                            weightEProf = [i, objStruct.Panel[0].Material.matLabel,
+                                           objStruct.Stiffener[0].Material.matLabel,
+                                           objStruct.Panel[0].Plate.tp,
+                                           profiles.profLabel, profiles.SM, profiles.Aw,
+                                           objStruct.Stiffener[0].SMMin, 
+                                           objStruct.Stiffener[0].AwMin,
+                                           ratSM, ratAw, 
+                                           stiffWeight, panWeight, 
+                                           self.objective_function(objStruct)]
+                            
+                            extrWeights = extrWeights + [weightEProf]
+                            
+                        for profiles in machined:
+                            
+                            stiffWeight = []
+                            for k in range(0, objStruct.Stiffener.__len__()):
+                                objStruct.Stiffener[k].assign_profile(profiles)
+                                objStruct.Stiffener[k].calc_weight()
+                                stiffWeight = stiffWeight + [objStruct.Stiffener[k].weight]
+                            stiffWeight = sum(stiffWeight)
+                            
+                            ratSM = profiles.SM/objStruct.Stiffener[0].SMMin
+                            ratAw = profiles.Aw/objStruct.Stiffener[0].AwMin
+                            
+                            weightMProf = [i, objStruct.Panel[0].Material.matLabel,
+                                           objStruct.Stiffener[0].Material.matLabel,
+                                           objStruct.Panel[0].Plate.tp,
+                                           profiles.profLabel, profiles.SM, profiles.Aw,
+                                           objStruct.Stiffener[0].SMMin, 
+                                           objStruct.Stiffener[0].AwMin,
+                                           ratSM, ratAw, 
+                                           stiffWeight, panWeight,
+                                           self.objective_function(objStruct)]
+                            machWeights = machWeights + [weightMProf]
+                    else:
+                        weightPan = [i, objStruct.Panel[0].Material.matLabel,
+                                     '-',
+                                     objStruct.Panel[0].Plate.tp, 
+                                     'None',0,0,0,0,0,0,0,
+                                     panWeight,
+                                     self.objective_function(objStruct)]
+                        extrWeights = extrWeights + [weightPan]
+                        machWeights= machWeights + [weightPan]
+                
         return (extrWeights, machWeights)
     
     
@@ -2954,5 +3052,4 @@ class StressCalculator:
         zMax = ycog
         sigma_stiff = (MMax * zMax / Ixx)
         return sigma_stiff
-    
     
