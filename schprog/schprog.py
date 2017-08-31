@@ -91,10 +91,10 @@ class Vessel:
 
 
 class Structure:
-    """ Superclass, configures the structural model on the highest level,
-        such as topology and global variables from Rules.
+    """ Superclass, contains the structural model on the highest level,
+        such as the panel and stiffener objects and global variables from Rules.
 
-        Gets Panel and Stiffener objects assigned to it. Calculates the
+        Gets Strake, Panel and Stiffener objects assigned to it. Calculates the
         lightweight of the vessel and the centre of gravity.
 
         Attributes:
@@ -1002,13 +1002,12 @@ class Machined(ProfileLibrary):
                 tf: Thickness of the flange (float, mm)
                 wf: Width of the flange (float, mm)
                 pType: Type of profile e.g. I-beam, L-beam, T-beam etc. (string)
-                Atot: Total cross-section area (float, mm2)
-                SM: Section moudulus (float, cm3)
-                Aw: Shear/Web crossection area (float, cm2)
             Output:
                 self.Input
                 self.Atot: Cross-section area of profile (float, mm2)
-
+                SM: Section moudulus (float, cm3)
+                Aw: Shear/Web crossection area (float, cm2)
+                
             ...calc_SM...
             Objective:
                 Calculates the section modulus of different types of
@@ -1121,7 +1120,7 @@ class ISO12215(Rules):
             Input:
                 objVess: Vessel class object
             Output:
-                Vessel data = [LWL, bC, mLDC, beta04, V, craftMode]
+                Vessel data = [LWL, bC, mLDC, beta04, V, hT, tC, fB, craftMode]
                 See Vessel class for more information.
 
             ...calc_global_var...
@@ -1141,14 +1140,14 @@ class ISO12215(Rules):
             Input:
                 objPan: Panel object from the Panel class
             Output:
-                Panel data = [b, lPan, xPos, yPos, location]
+                Panel data = [b, lPan, xPos, zPos, location]
                 see Panel class for more information.
 
             ...calc_panel_pressure_factors...
             Objective:
                 Calculates the panel PRESSURE ADJUSTING FACTORS from SECTION 7
             Input:
-                [b, lPan , xPos, yPos, location, mLDC, nCG, LWL]
+                [b, lPan , xPos, zPos, location, mLDC, nCG, LWL, hT, tC, fB]
             Output:
                 ruleType: type of rule that has been used, put to default as 'ISO' (string)
                 kL: Longitudinal pressure distribution factor (0-1, -)
@@ -1163,13 +1162,13 @@ class ISO12215(Rules):
             Input:
                 objStiff: Stiffener object from the stiffener class.
             Output:
-                Stiffener data = [lStiff, xPos, yPos, zPos, sStiff, location, stiffType]
+                Stiffener data = [lStiff, xPos, zPos, sStiff, location, stiffType]
 
             ...calc_stiff_pressure_factors...
             Objective:
                 Calculates the stiffener PRESSURE ADJUSTING FACTORS from SECTION 7
             Input:
-                [lStiff, xPos, yPos, zPos, sStiff, location, stiffType, mLDC, nCG, LWL]
+                [lStiff, xPos, zPos, sStiff, location, stiffType, mLDC, nCG, LWL, hT, tC, fB]
             Output:
                 ruleType: type of rule that has been used, put to default as 'ISO' (string)
                 kL: Longitudinal pressure distribution factor (0-1, -)
@@ -1598,7 +1597,7 @@ class ISO12215(Rules):
 
         if location == 'bottom':
             """ BOTTOM DESIGN PRESSURE
-                The bottom pressure shall be the greater or 8.1.2 or 8.1.3.
+                The bottom pressure shall be the greater of 8.1.2 or 8.1.3.
             """
             pBMin = 0.45*mLDC**0.33 + (0.9*LWL * kDC)  # kN/m2
 
@@ -1613,7 +1612,7 @@ class ISO12215(Rules):
 
         elif location == 'side':
             """ SIDE DESIGN PRESSURE
-                The side pressure shall be the greater or 8.1.4 or 8.1.5.
+                The side pressure shall be the greater of 8.1.4 or 8.1.5.
             """
             pSMin = 0.9*LWL * kDC  # kN/m2
             pDBase = 0.35*LWL + 14.6  # kN/m2
@@ -2451,7 +2450,7 @@ class Report:
                     if objStruct.Strake[i].sections[j].secName == objStruct.Panel[k].section:
                         assList6 = ([objStruct.Strake[i].strakName]
                                     + [objStruct.Strake[i].sections[j].secName]
-                                    + ['Panel' + ' ' + str(j+1)]
+                                    + ['Panel' + ' ' + str(k+1)]
                                     + [objStruct.Panel[k].panName]
                                     + [objStruct.Strake[i].sections[j].sGird] 
                                     + [objStruct.Strake[i].sections[j].sFram]
@@ -2469,8 +2468,8 @@ class Report:
                             if objStruct.Strake[i].sections[j].secName == objStruct.Stiffener[k].section:
                                 assList6b = ([objStruct.Strake[i].strakName]
                                             + [objStruct.Strake[i].sections[j].secName]
-                                            + [objStruct.Stiffener[i].stiffType + ' ' + str(i+1)]
-                                            + [objStruct.Stiffener[i].stiffName]
+                                            + [objStruct.Stiffener[k].stiffType + ' ' + str(k+1)]
+                                            + [objStruct.Stiffener[k].stiffName]
                                             + [objStruct.Strake[i].sections[j].sGird] 
                                             + [objStruct.Strake[i].sections[j].sFram]
                                             + [objStruct.Strake[i].sections[j].xPosGlob] 
@@ -3481,6 +3480,8 @@ class Optimizer:
                             stiffeners
                 machined: List of Machined objects to be assigned to the
                           stiffeners
+                strakeID: Strake object ID nr e.g. Strake[0] (int)
+                sectionID: Section object ID nr e.g. Section[0] (int)
             Output:
                 self[0]
                     extrWeights[0:n]:
@@ -3781,3 +3782,4 @@ class StressCalculator:
         sigmaActStiff = MMax * zMax / Ixx # N/mm2
         
         return sigmaActStiff
+
